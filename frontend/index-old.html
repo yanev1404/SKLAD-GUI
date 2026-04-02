@@ -22,46 +22,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .page.active{display:block}
 
 /* ── Stat bar ── */
-.stat-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
-.stat{background:#13151f;border:1px solid #1e2130;border-radius:8px;padding:12px 16px;cursor:pointer;transition:border-color .15s}
-.stat:hover{border-color:#4f5fcc}
+.stat-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat{background:#13151f;border:1px solid #1e2130;border-radius:8px;padding:12px 16px}
 .stat-val{color:#e2e4ef;font-size:22px;font-weight:500}
 .stat-lbl{color:#555a72;font-size:11px;margin-top:2px}
-.stat-hint{color:#2a3060;font-size:10px;margin-top:4px}
-.stat:hover .stat-hint{color:#4f5fcc}
-.drill-modal{background:#13151f;border:1px solid #2a2d3a;border-radius:10px;width:780px;max-width:98vw;max-height:88vh;overflow-y:auto;display:flex;flex-direction:column}
-.group-header td{background:#0f1117;color:#7b8cde;font-size:11px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid #1a1d2a;cursor:pointer}
-.group-count{color:#555a72;font-weight:400;margin-left:4px}
-.filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 0 14px}
-.filter-bar select,.filter-bar input{width:auto;min-width:120px;padding:6px 9px;font-size:12px}
-.filter-lbl{color:#555a72;font-size:11px;white-space:nowrap}
-.group-toggle-btn{background:#0b0d14;border:1px solid #2a2d3a;color:#555a72;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .12s}
-.group-toggle-btn.active{background:#161e40;border-color:#4f5fcc;color:#7b8cde}
-.ct-row{cursor:default}
-.ct-row:hover td{background:#161926}
-.ct-row td{transition:background .1s}
-.ct-expand{background:#0b0e18}
-.ct-expand td{padding:0}
-.ct-inner{padding:10px 16px 14px 36px;border-top:1px solid #1a1d2a}
-.ct-totals{display:flex;gap:24px;padding:8px 0 10px;font-size:12px;color:#555a72}
-.ct-totals span{color:#9ba3c4}
-.fx-sub-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
-.fx-sub-table th{color:#555a72;font-size:10px;letter-spacing:.4px;text-transform:uppercase;padding:5px 8px;border-bottom:1px solid #1a1d2a;text-align:left}
-.fx-sub-table td{padding:5px 8px;border-bottom:1px solid #0f1117;color:#c8cce0}
-.fx-sub-table tr:last-child td{border-bottom:none}
-.editable-row td.editable-cell{cursor:text}
-.edit-input{background:#0b0d14;border:1px solid #4f5fcc;border-radius:4px;color:#c8cce0;font-size:13px;padding:3px 6px;width:100%;outline:none;font-family:inherit}
-.edit-select{background:#0b0d14;border:1px solid #4f5fcc;border-radius:4px;color:#c8cce0;font-size:13px;padding:3px 6px;width:100%;outline:none;font-family:inherit}
-.row-saving{opacity:.5;pointer-events:none}
-.arrow-cell{width:24px;color:#555a72;font-size:10px;user-select:none;cursor:pointer}
-.arrow-open{color:#7b8cde}
-.combo-wrap{position:relative;width:100%}
-.combo-wrap input{width:100%}
-.combo-drop{position:absolute;top:100%;left:0;right:0;background:#1a1d27;border:1px solid #4f5fcc;border-top:none;border-radius:0 0 6px 6px;z-index:300;max-height:180px;overflow-y:auto;display:none}
-.combo-wrap.open .combo-drop{display:block}
-.combo-opt{padding:7px 10px;font-size:12px;color:#c8cce0;cursor:pointer;white-space:nowrap}
-.combo-opt:hover{background:#1e2a50;color:#e2e4ef}
-.combo-opt.new-opt{color:#7b8cde;border-top:1px solid #2a2d3a}
 
 /* ── Cards / Tables ── */
 .card{background:#13151f;border:1px solid #1e2130;border-radius:8px;padding:16px;margin-bottom:16px}
@@ -109,7 +73,7 @@ textarea{resize:vertical}
 
 /* ── Modal ── */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
-.modal{background:#13151f;border:1px solid #2a2d3a;border-radius:10px;width:820px;max-width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
+.modal{background:#13151f;border:1px solid #2a2d3a;border-radius:10px;width:620px;max-width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
 .modal-sm{width:440px}
 .modal-header{padding:16px 20px;border-bottom:1px solid #1e2130;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#13151f;z-index:1}
 .modal-title{color:#e2e4ef;font-size:15px;font-weight:500}
@@ -175,74 +139,30 @@ textarea{resize:vertical}
 ══════════════════════════════════════════ -->
 <div class="page active" id="page-fixtures">
   <div class="stat-bar">
-    <div class="stat" onclick="openDrill('events')">
-      <div class="stat-val" id="stat-events">—</div>
-      <div class="stat-lbl">Active events</div>
-      <div class="stat-hint">click to view</div>
-    </div>
-    <div class="stat" onclick="openDrill('models')">
-      <div class="stat-val" id="stat-models">—</div>
-      <div class="stat-lbl">Unique models</div>
-      <div class="stat-hint">click to view</div>
-    </div>
-    <div class="stat" onclick="openDrill('all-containers')">
-      <div class="stat-val" id="stat-containers">—</div>
-      <div class="stat-lbl">Total containers</div>
-      <div class="stat-hint">click to view</div>
-    </div>
-    <div class="stat" onclick="openDrill('containers-stock')">
-      <div class="stat-val" id="stat-ct-stock">—</div>
-      <div class="stat-lbl">Containers in stock</div>
-      <div class="stat-hint">at warehouse locations</div>
-    </div>
-    <div class="stat" onclick="openDrill('containers-out')">
-      <div class="stat-val" id="stat-ct-out">—</div>
-      <div class="stat-lbl">Containers on location</div>
-      <div class="stat-hint">outside warehouse</div>
-    </div>
+    <div class="stat"><div class="stat-val" id="stat-fixtures">—</div><div class="stat-lbl">Total fixtures</div></div>
+    <div class="stat"><div class="stat-val" id="stat-containers">—</div><div class="stat-lbl">Containers</div></div>
+    <div class="stat"><div class="stat-val" id="stat-locations">—</div><div class="stat-lbl">Locations</div></div>
+    <div class="stat"><div class="stat-val" id="stat-statuses">—</div><div class="stat-lbl">Statuses</div></div>
   </div>
-
   <div class="card">
     <div class="card-header">
       <span class="card-title">Fixtures</span>
-    </div>
-    <div class="filter-bar">
-      <span class="filter-lbl">Search</span>
-      <input type="text" id="fx-search" placeholder="Any field..." style="width:160px" oninput="filterFixtures()">
-      <span class="filter-lbl">Category</span>
-      <select id="fx-cat-filter" style="width:130px" onchange="filterFixtures()"><option value="">All</option></select>
-      <span class="filter-lbl">Status</span>
-      <select id="fx-status-filter" style="width:130px" onchange="filterFixtures()"><option value="">All</option></select>
-      <span class="filter-lbl">Container</span>
-      <select id="fx-container-filter" style="width:130px" onchange="filterFixtures()"><option value="">All</option></select>
-      <span class="filter-lbl">Location</span>
-      <select id="fx-location-filter" style="width:130px" onchange="filterFixtures()"><option value="">All</option></select>
-      <span class="filter-lbl" style="margin-left:8px">Group by</span>
-      <button class="group-toggle-btn active" id="grp-cat" onclick="setGroup('category')">Category</button>
-      <button class="group-toggle-btn" id="grp-loc" onclick="setGroup('location')">Location</button>
-      <button class="group-toggle-btn" id="grp-status" onclick="setGroup('status')">Status</button>
-      <button class="group-toggle-btn" id="grp-none" onclick="setGroup('none')">No grouping</button>
+      <div class="search-row">
+        <input type="text" id="fx-search" placeholder="Search..." style="width:180px" oninput="filterFixtures()">
+        <select id="fx-status-filter" style="width:140px" onchange="filterFixtures()">
+          <option value="">All statuses</option>
+        </select>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>ID</th><th>Name</th><th>Category</th><th>Subcategory</th><th>Manufacturer</th><th>Model</th>
-          <th>Qty</th><th>Wt (kg)</th><th>Container</th><th>Location</th><th>Status</th><th></th>
+          <th>ID</th><th>Name</th><th>Category</th><th>Manufacturer</th><th>Model</th>
+          <th>Qty</th><th>Wt (kg)</th><th>Container</th><th>Status</th><th></th>
         </tr></thead>
         <tbody id="fx-tbody"></tbody>
       </table>
     </div>
-  </div>
-</div>
-
-<!-- Drill-down modal -->
-<div class="modal-bg" id="modal-drill" style="display:none">
-  <div class="modal drill-modal">
-    <div class="modal-header">
-      <span class="modal-title" id="drill-title">Detail</span>
-      <button class="close-btn" onclick="closeModal('modal-drill')">&#x2715;</button>
-    </div>
-    <div class="modal-body" id="drill-body"></div>
   </div>
 </div>
 
@@ -261,7 +181,7 @@ textarea{resize:vertical}
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th style="width:20px"></th><th>ID</th><th>Name</th><th>Category</th><th>Type</th><th>Location</th>
+          <th>ID</th><th>Name</th><th>Category</th><th>Type</th><th>Location</th>
           <th>W×D×H (cm)</th><th>Tare (kg)</th><th>Status</th><th></th>
         </tr></thead>
         <tbody id="ct-tbody"></tbody>
@@ -302,7 +222,7 @@ textarea{resize:vertical}
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>ID</th><th>Company</th><th>First name</th><th>Last name</th><th>Phone</th><th>Email</th><th></th>
+          <th>ID</th><th>Company</th><th>Name</th><th>Phone</th><th>Email</th><th></th>
         </tr></thead>
         <tbody id="con-tbody"></tbody>
       </table>
@@ -384,8 +304,8 @@ textarea{resize:vertical}
 
       <hr class="divider">
       <div style="color:#555a72;font-size:10px;letter-spacing:.7px;text-transform:uppercase;margin-bottom:8px">Fixture rows</div>
-      <div class="table-wrap" style="overflow-x:auto;max-width:100%">
-        <table class="fx-table" style="min-width:900px">
+      <div class="table-wrap">
+        <table class="fx-table">
           <thead><tr>
             <th>Name *</th><th>Category</th><th>Subcategory</th><th>Manufacturer</th><th>Model</th>
             <th>Qty</th><th>Wt kg</th><th>Pwr W</th><th>Status</th><th>Note</th><th></th>
@@ -414,10 +334,10 @@ textarea{resize:vertical}
     <div class="modal-body">
       <div class="form-row c2">
         <div class="field"><label>Short name *</label><input type="text" id="c-name"></div>
-        <div class="field"><label>Category</label><div class="combo-wrap"><input type="text" id="c-cat" autocomplete="off" placeholder="e.g. Flight case"></div></div>
+        <div class="field"><label>Category</label><input type="text" id="c-cat"></div>
       </div>
       <div class="form-row c2">
-        <div class="field"><label>Type</label><div class="combo-wrap"><input type="text" id="c-type" autocomplete="off" placeholder="e.g. Road case"></div></div>
+        <div class="field"><label>Type</label><input type="text" id="c-type"></div>
         <div class="field"><label>Location</label><select id="c-location"><option value="">— none —</option></select></div>
       </div>
       <div class="form-row c3">
@@ -584,8 +504,6 @@ async function init(){
     allStatuses = await api('GET','/statuses');
     document.getElementById('conn-dot').style.background='#4caf50';
     document.getElementById('conn-label').textContent='connected';
-    const loads = await api('GET','/loads').catch(()=>[]);
-    window._allLoads = loads;
     await Promise.all([loadFixtures(), loadContainersData(), loadLocationsData(), loadContactsData()]);
     updateStats();
     populateStatusFilters();
@@ -596,251 +514,57 @@ async function init(){
   }
 }
 
-let fxGroupBy = 'category';
-let collapsedGroups = new Set();
-
 function updateStats(){
-  const whLocationIds = new Set(
-    allLocations.filter(l=>(l.type||'').toLowerCase().includes('warehouse')||l.short_name.includes('WH'))
-      .map(l=>l.location_id)
-  );
-  const ctStock = allContainers.filter(c=>c.container_type!=='placeholder'&&whLocationIds.has(c.location_id)).length;
-  const ctOut   = allContainers.filter(c=>c.container_type!=='placeholder'&&!whLocationIds.has(c.location_id)).length;
-  const totalCt = allContainers.filter(c=>c.container_type!=='placeholder').length;
-  const allLoads = window._allLoads||[];
-  const activeEvents = allLoads.filter(l=>l.status==='completed').length;
-  const uniqueModels = new Set(allFixtures.map(f=>f.model).filter(Boolean)).size;
-
-  document.getElementById('stat-events').textContent    = activeEvents;
-  document.getElementById('stat-models').textContent    = uniqueModels;
-  document.getElementById('stat-containers').textContent= totalCt;
-  document.getElementById('stat-ct-stock').textContent  = ctStock;
-  document.getElementById('stat-ct-out').textContent    = ctOut;
+  document.getElementById('stat-fixtures').textContent = allFixtures.length;
+  document.getElementById('stat-containers').textContent = allContainers.length;
+  document.getElementById('stat-locations').textContent = allLocations.length;
+  document.getElementById('stat-statuses').textContent = allStatuses.length;
 }
 
 function populateStatusFilters(){
-  const statSel = document.getElementById('fx-status-filter');
-  statSel.innerHTML = '<option value="">All</option>';
-  allStatuses.forEach(s=> statSel.innerHTML += `<option value="${s.name}">${s.name}</option>`);
-
-  const catSel = document.getElementById('fx-cat-filter');
-  catSel.innerHTML = '<option value="">All</option>';
-  [...new Set(allFixtures.map(f=>f.category).filter(Boolean))].sort()
-    .forEach(c=> catSel.innerHTML += `<option value="${c}">${c}</option>`);
-
-  const ctSel = document.getElementById('fx-container-filter');
-  ctSel.innerHTML = '<option value="">All</option>';
-  allContainers.filter(c=>c.container_type!=='placeholder')
-    .forEach(c=> ctSel.innerHTML += `<option value="${c.container_id}">${c.short_name}</option>`);
-
-  const locSel = document.getElementById('fx-location-filter');
-  locSel.innerHTML = '<option value="">All</option>';
-  allLocations.forEach(l=> locSel.innerHTML += `<option value="${l.location_id}">${l.short_name}</option>`);
-}
-
-function setGroup(mode){
-  fxGroupBy = mode;
-  collapsedGroups.clear();
-  ['cat','loc','status','none'].forEach(k=>{
-    const b = document.getElementById('grp-'+k);
-    if(b) b.classList.remove('active');
-  });
-  const map = {category:'cat',location:'loc',status:'status',none:'none'};
-  const btn = document.getElementById('grp-'+(map[mode]||mode));
-  if(btn) btn.classList.add('active');
-  filterFixtures();
-}
-
-function toggleGroup(key){
-  if(collapsedGroups.has(key)) collapsedGroups.delete(key);
-  else collapsedGroups.add(key);
-  filterFixtures();
+  const sel = document.getElementById('fx-status-filter');
+  sel.innerHTML = '<option value="">All statuses</option>';
+  allStatuses.forEach(s=> sel.innerHTML += `<option value="${s.name}">${s.name}</option>`);
 }
 
 // ── FIXTURES ─────────────────────────────────────────────────
 async function loadFixtures(){
-  document.getElementById('fx-tbody').innerHTML = loadingRow(12);
+  document.getElementById('fx-tbody').innerHTML = loadingRow(10);
   allFixtures = await api('GET','/fixtures');
   renderFixtures(allFixtures);
 }
 
-function getFixtureLocation(f){
-  const c = allContainers.find(c=>c.container_id===f.container_id);
-  if(!c) return null;
-  return allLocations.find(l=>l.location_id===c.location_id)||null;
-}
-
 function renderFixtures(list){
   const tbody = document.getElementById('fx-tbody');
-  if(!list.length){tbody.innerHTML=emptyRow('No fixtures found',12);return;}
-  const cmap={};
+  if(!list.length){tbody.innerHTML=emptyRow('No fixtures found',10);return;}
+  // Build container map for display
+  const cmap = {};
   allContainers.forEach(c=>cmap[c.container_id]=c.short_name);
-  const lmap={};
-  allLocations.forEach(l=>lmap[l.location_id]=l.short_name);
-
-  const statusOptsFor = (curId) => allStatuses.map(s=>`<option value="${s.status_id}" ${s.status_id===curId?'selected':''}>${s.name}</option>`).join('');
-  const fxRow = f => `
-    <tr data-id="${f.fixture_id}">
+  tbody.innerHTML = list.map(f=>`
+    <tr>
       <td style="color:#555a72">${f.fixture_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="short_name" data-val="${f.short_name||''}">${f.short_name}</td>
-      <td style="color:#9ba3c4" data-field="category" data-val="${f.category||''}">${f.category||'—'}</td>
-      <td style="color:#9ba3c4" data-field="subcategory" data-val="${f.subcategory||''}">${f.subcategory||'—'}</td>
-      <td data-field="manufacturer" data-val="${f.manufacturer||''}">${f.manufacturer||'—'}</td>
-      <td data-field="model" data-val="${f.model||''}">${f.model||'—'}</td>
-      <td data-field="quantity" data-val="${f.quantity}" data-type="int">${f.quantity}</td>
-      <td data-field="weight_kg" data-val="${f.weight_kg!=null?f.weight_kg:''}" data-type="number">${f.weight_kg!=null?f.weight_kg:'—'}</td>
-      <td>${f.container_id?(cmap[f.container_id]||f.container_id):'—'}</td>
-      <td>${(()=>{const c=allContainers.find(c=>c.container_id===f.container_id);return c&&c.location_id?lmap[c.location_id]||'—':'—';})()}</td>
-      <td data-field="status_id" data-val="${f.status_id||''}" data-type="select" data-opts='${JSON.stringify(allStatuses.map(s=>({v:s.status_id,l:s.name})))}'>${badge(statusName(f.status_id))}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="deleteFx(${f.fixture_id})" title="Delete">&#x2715;</button></td>
-    </tr>`;
-
-  if(fxGroupBy==='none'){
-    tbody.innerHTML = list.map(fxRow).join('');
-    return;
-  }
-
-  const getKey = f => {
-    if(fxGroupBy==='category') return f.category||'Uncategorised';
-    if(fxGroupBy==='status')   return statusName(f.status_id)||'No status';
-    if(fxGroupBy==='location'){
-      const c=allContainers.find(c=>c.container_id===f.container_id);
-      if(!c||!c.location_id) return 'No location';
-      return lmap[c.location_id]||'Unknown';
-    }
-    return '—';
-  };
-
-  const groups = {};
-  list.forEach(f=>{ const k=getKey(f); if(!groups[k]) groups[k]=[]; groups[k].push(f); });
-
-  let html='';
-  Object.keys(groups).sort().forEach(key=>{
-    const collapsed = collapsedGroups.has(key);
-    const arrow = collapsed ? '&#x25B6;' : '&#x25BC;';
-    html += `<tr class="group-header" onclick="toggleGroup('${key.replace(/'/g,"\'")}')">
-      <td colspan="12">${arrow} ${key} <span class="group-count">${groups[key].length} fixture${groups[key].length!==1?'s':''}</span></td>
-    </tr>`;
-    if(!collapsed) html += groups[key].map(fxRow).join('');
-  });
-  tbody.innerHTML = html;
+      <td style="color:#e2e4ef;font-weight:500">${f.short_name}</td>
+      <td style="color:#9ba3c4">${f.category||'—'}</td>
+      <td>${f.manufacturer||'—'}</td>
+      <td>${f.model||'—'}</td>
+      <td>${f.quantity}</td>
+      <td>${f.weight_kg!=null?f.weight_kg:'—'}</td>
+      <td>${f.container_id ? (cmap[f.container_id]||f.container_id) : '—'}</td>
+      <td>${badge(statusName(f.status_id))}</td>
+      <td><button class="btn-icon" onclick="deleteFx(${f.fixture_id})" title="Delete">✕</button></td>
+    </tr>`).join('');
 }
 
 function filterFixtures(){
-  const q   = document.getElementById('fx-search').value.toLowerCase();
-  const s   = document.getElementById('fx-status-filter').value;
-  const cat = document.getElementById('fx-cat-filter').value;
-  const cid = document.getElementById('fx-container-filter').value;
-  const lid = document.getElementById('fx-location-filter').value;
-
+  const q = document.getElementById('fx-search').value.toLowerCase();
+  const s = document.getElementById('fx-status-filter').value;
   renderFixtures(allFixtures.filter(f=>{
-    if(q){
-      const loc = getFixtureLocation(f);
-      const c   = allContainers.find(c=>c.container_id===f.container_id);
-      const matchQ =
-        f.short_name.toLowerCase().includes(q) ||
-        (f.category||'').toLowerCase().includes(q) ||
-        (f.subcategory||'').toLowerCase().includes(q) ||
-        (f.manufacturer||'').toLowerCase().includes(q) ||
-        (f.model||'').toLowerCase().includes(q) ||
-        (c ? c.short_name.toLowerCase().includes(q) : false) ||
-        (loc ? loc.short_name.toLowerCase().includes(q) : false) ||
-        (statusName(f.status_id)||'').toLowerCase().includes(q);
-      if(!matchQ) return false;
-    }
-    if(s   && statusName(f.status_id)!==s) return false;
-    if(cat && f.category!==cat) return false;
-    if(cid && String(f.container_id)!==cid) return false;
-    if(lid){
-      const c=allContainers.find(c=>c.container_id===f.container_id);
-      if(!c||String(c.location_id)!==lid) return false;
-    }
-    return true;
+    const matchQ = !q || f.short_name.toLowerCase().includes(q) ||
+      (f.category||'').toLowerCase().includes(q) ||
+      (f.manufacturer||'').toLowerCase().includes(q);
+    const matchS = !s || statusName(f.status_id)===s;
+    return matchQ && matchS;
   }));
-}
-
-// ── Drill-down popups ────────────────────────────────────────
-async function openDrill(type){
-  const modal = document.getElementById('modal-drill');
-  const title = document.getElementById('drill-title');
-  const body  = document.getElementById('drill-body');
-  body.innerHTML = '<div style="padding:20px;color:#555a72">Loading...</div>';
-  modal.style.display='flex';
-
-  const cmap={};allContainers.forEach(c=>cmap[c.container_id]=c.short_name);
-  const lmap={};allLocations.forEach(l=>lmap[l.location_id]=l.short_name);
-  const whIds = new Set(allLocations.filter(l=>(l.type||'').toLowerCase().includes('warehouse')||l.short_name.includes('WH')).map(l=>l.location_id));
-
-  if(type==='events'){
-    title.textContent='Active loads (on location)';
-    let loads=window._allLoads||[];
-    if(!loads.length){ try{ loads=await api('GET','/loads'); window._allLoads=loads; }catch(e){} }
-    const active=loads.filter(l=>l.status==='completed');
-    if(!active.length){body.innerHTML='<p style="padding:20px;color:#555a72">No active loads.</p>';return;}
-    body.innerHTML=`<div class="table-wrap" style="padding:4px 0"><table>
-      <thead><tr><th>Load ID</th><th>Origin</th><th>Destination</th><th>Created</th><th>Status</th></tr></thead>
-      <tbody>${active.map(l=>`<tr>
-        <td style="color:#555a72">${l.load_id}</td>
-        <td>${lmap[l.origin_location_id]||l.origin_location_id||'—'}</td>
-        <td style="color:#e2e4ef;font-weight:500">${lmap[l.destination_location_id]||l.destination_location_id||'—'}</td>
-        <td style="color:#555a72">${new Date(l.created_at).toLocaleDateString()}</td>
-        <td>${badge(l.status)}</td>
-      </tr>`).join('')}</tbody></table></div>`;
-  }
-
-  else if(type==='models'){
-    title.textContent='Unique fixture models';
-    const modelMap={};
-    allFixtures.forEach(f=>{
-      if(!f.model) return;
-      const key=`${f.manufacturer||''}|${f.model}`;
-      if(!modelMap[key]) modelMap[key]={manufacturer:f.manufacturer||'—',model:f.model,count:0,categories:new Set()};
-      modelMap[key].count+=f.quantity||1;
-      if(f.category) modelMap[key].categories.add(f.category);
-    });
-    const rows=Object.values(modelMap).sort((a,b)=>a.model.localeCompare(b.model));
-    body.innerHTML=`<div class="table-wrap" style="padding:4px 0"><table>
-      <thead><tr><th>Manufacturer</th><th>Model</th><th>Total units</th><th>Categories</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr>
-        <td>${r.manufacturer}</td>
-        <td style="color:#e2e4ef;font-weight:500">${r.model}</td>
-        <td>${r.count}</td>
-        <td style="color:#9ba3c4">${[...r.categories].join(', ')||'—'}</td>
-      </tr>`).join('')}</tbody></table></div>`;
-  }
-
-  else if(type==='all-containers'){
-    title.textContent='All containers';
-    const list=allContainers.filter(c=>c.container_type!=='placeholder');
-    body.innerHTML=drillContainerTable(list,cmap,lmap);
-  }
-
-  else if(type==='containers-stock'){
-    title.textContent='Containers in stock (at warehouse)';
-    const list=allContainers.filter(c=>c.container_type!=='placeholder'&&whIds.has(c.location_id));
-    body.innerHTML=drillContainerTable(list,cmap,lmap);
-  }
-
-  else if(type==='containers-out'){
-    title.textContent='Containers on location (outside warehouse)';
-    const list=allContainers.filter(c=>c.container_type!=='placeholder'&&!whIds.has(c.location_id));
-    body.innerHTML=drillContainerTable(list,cmap,lmap);
-  }
-}
-
-function drillContainerTable(list,cmap,lmap){
-  if(!list.length) return '<p style="padding:20px;color:#555a72">No containers.</p>';
-  return `<div class="table-wrap" style="padding:4px 0"><table>
-    <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Location</th><th>W&#xD7;D&#xD7;H</th><th>Tare kg</th><th>Status</th></tr></thead>
-    <tbody>${list.map(c=>`<tr>
-      <td style="color:#555a72">${c.container_id}</td>
-      <td style="color:#e2e4ef;font-weight:500">${c.short_name}</td>
-      <td>${c.category||'—'}</td>
-      <td>${c.location_id?lmap[c.location_id]||c.location_id:'—'}</td>
-      <td>${c.width_cm&&c.depth_cm&&c.height_cm?`${c.width_cm}&#xD7;${c.depth_cm}&#xD7;${c.height_cm}`:'—'}</td>
-      <td>${c.weight_kg!=null?c.weight_kg:'—'}</td>
-      <td>${badge(statusName(c.status_id))}</td>
-    </tr>`).join('')}</tbody></table></div>`;
 }
 
 async function deleteFx(id){
@@ -853,15 +577,12 @@ async function deleteFx(id){
 }
 
 // ── CONTAINERS data ──────────────────────────────────────────
-let expandedContainers = new Set();
-let editingRow = null;
-
 async function loadContainersData(){
   allContainers = await api('GET','/containers');
 }
 
 async function loadContainers(){
-  document.getElementById('ct-tbody').innerHTML = loadingRow(10);
+  document.getElementById('ct-tbody').innerHTML = loadingRow(9);
   await loadContainersData();
   renderContainers();
 }
@@ -869,76 +590,22 @@ async function loadContainers(){
 function renderContainers(){
   const tbody = document.getElementById('ct-tbody');
   const lmap = {}; allLocations.forEach(l=>lmap[l.location_id]=l.short_name);
-  if(!allContainers.length){tbody.innerHTML=emptyRow('No containers found',10);return;}
+  if(!allContainers.length){tbody.innerHTML=emptyRow('No containers found',9);return;}
   const q = (document.getElementById('ct-search')||{value:''}).value.toLowerCase();
-  const list = allContainers.filter(c=>
-    c.container_type!=='placeholder' &&
-    (!q||c.short_name.toLowerCase().includes(q)||(c.category||'').toLowerCase().includes(q)||(c.container_type||'').toLowerCase().includes(q))
-  );
-
-  let html = '';
-  list.forEach(c=>{
-    const expanded = expandedContainers.has(c.container_id);
-    const arrow = expanded ? '&#x25BC;' : '&#x25B6;';
-    const arrowCls = expanded ? 'arrow-open' : '';
-    const ctStatusOpts = JSON.stringify(allStatuses.map(s=>({v:s.status_id,l:s.name})));
-    const ctLocOpts    = JSON.stringify(allLocations.map(l=>({v:l.location_id,l:l.short_name})));
-    html += `<tr class="ct-row" id="ct-row-${c.container_id}" data-id="${c.container_id}">
-      <td class="arrow-cell ${arrowCls}" onclick="toggleContainer(event,${c.container_id})">${arrow}</td>
+  const list = allContainers.filter(c=>!q||c.short_name.toLowerCase().includes(q)||(c.category||'').toLowerCase().includes(q));
+  tbody.innerHTML = list.map(c=>`
+    <tr>
       <td style="color:#555a72">${c.container_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="short_name" data-val="${c.short_name||''}">${c.short_name}</td>
-      <td data-field="category" data-val="${c.category||''}">${c.category||'—'}</td>
-      <td data-field="container_type" data-val="${c.container_type||''}">${c.container_type||'—'}</td>
-      <td data-field="location_id" data-val="${c.location_id||''}" data-type="select" data-opts='${ctLocOpts}'>${c.location_id?(lmap[c.location_id]||c.location_id):'—'}</td>
-      <td data-field="width_cm" data-val="${c.width_cm||''}" data-type="number">${c.width_cm||'—'}</td>
-      <td data-field="weight_kg" data-val="${c.weight_kg!=null?c.weight_kg:''}" data-type="number">${c.weight_kg!=null?c.weight_kg:'—'}</td>
-      <td data-field="status_id" data-val="${c.status_id||''}" data-type="select" data-opts='${ctStatusOpts}'>${badge(statusName(c.status_id))}</td>
-      <td onclick="event.stopPropagation()">
-        <button class="btn-icon" onclick="deleteCt(${c.container_id})" title="Delete">&#x2715;</button>
-      </td>
-    </tr>`;
-    if(expanded){
-      const fixtures = allFixtures.filter(f=>f.container_id===c.container_id);
-      const fxWeight = fixtures.reduce((s,f)=>s+(parseFloat(f.weight_kg)||0)*(parseInt(f.quantity)||1),0);
-      const totalWt  = (parseFloat(c.weight_kg)||0) + fxWeight;
-      const vol = (c.width_cm&&c.depth_cm&&c.height_cm)
-        ? ((c.width_cm*c.depth_cm*c.height_cm)/1000000).toFixed(3)+' m³' : '—';
-      html += `<tr class="ct-expand" id="ct-exp-${c.container_id}">
-        <td colspan="10">
-          <div class="ct-inner">
-            <div class="ct-totals">
-              <div>Tare weight <span>${c.weight_kg!=null?c.weight_kg+'kg':'—'}</span></div>
-              <div>Fixtures weight <span>${fxWeight.toFixed(2)} kg</span></div>
-              <div>Total packed weight <span style="color:#e2e4ef;font-weight:500">${totalWt.toFixed(2)} kg</span></div>
-              <div>Volume <span>${vol}</span></div>
-              <div>Fixtures <span>${fixtures.length} type${fixtures.length!==1?'s':''} / ${fixtures.reduce((s,f)=>s+(parseInt(f.quantity)||1),0)} units</span></div>
-            </div>
-            ${fixtures.length?`<table class="fx-sub-table">
-              <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Manufacturer</th><th>Model</th><th>Qty</th><th>Wt (kg)</th><th>Status</th></tr></thead>
-              <tbody>${fixtures.map(f=>`<tr>
-                <td style="color:#555a72">${f.fixture_id}</td>
-                <td style="color:#e2e4ef">${f.short_name}</td>
-                <td>${f.category||'—'}</td>
-                <td>${f.manufacturer||'—'}</td>
-                <td>${f.model||'—'}</td>
-                <td>${f.quantity}</td>
-                <td>${f.weight_kg!=null?f.weight_kg:'—'}</td>
-                <td>${badge(statusName(f.status_id))}</td>
-              </tr>`).join('')}</tbody>
-            </table>`:'<div style="color:#555a72;font-size:12px;padding:4px 0">No fixtures in this container</div>'}
-          </div>
-        </td>
-      </tr>`;
-    }
-  });
-  tbody.innerHTML = html;
-}
-
-function toggleContainer(e, id){
-  e.stopPropagation();
-  if(expandedContainers.has(id)) expandedContainers.delete(id);
-  else expandedContainers.add(id);
-  renderContainers();
+      <td style="color:#e2e4ef;font-weight:500">${c.short_name}</td>
+      <td>${c.category||'—'}</td>
+      <td>${c.container_type||'—'}</td>
+      <td>${c.location_id ? (lmap[c.location_id]||c.location_id) : '—'}</td>
+      <td>${c.width_cm&&c.depth_cm&&c.height_cm ? `${c.width_cm}×${c.depth_cm}×${c.height_cm}` : '—'}</td>
+      <td>${c.weight_kg!=null?c.weight_kg:'—'}</td>
+      <td>${badge(statusName(c.status_id))}</td>
+      <td><button class="btn-icon" onclick="openContainerModal(${c.container_id})" title="Edit">✎</button>
+          <button class="btn-icon" onclick="deleteCt(${c.container_id})" title="Delete">✕</button></td>
+    </tr>`).join('');
 }
 
 function filterContainers(){ renderContainers(); }
@@ -948,7 +615,6 @@ async function deleteCt(id){
   try{
     await api('DELETE','/containers/'+id);
     toast('Container deleted');
-    expandedContainers.delete(id);
     await loadContainers(); updateStats();
   } catch(e){toast('Delete failed: '+e.message, true);}
 }
@@ -969,14 +635,14 @@ function renderLocations(){
   if(!allLocations.length){tbody.innerHTML=emptyRow('No locations found',7);return;}
   const cmap={}; allContainers.forEach(c=>cmap[c.container_id]=c.short_name);
   tbody.innerHTML = allLocations.map(l=>`
-    <tr data-id="${l.location_id}">
+    <tr>
       <td style="color:#555a72">${l.location_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="name" data-val="${l.name||''}">${l.name||'—'}</td>
-      <td data-field="short_name" data-val="${l.short_name||''}">${l.short_name||'—'}</td>
-      <td data-field="type" data-val="${l.type||''}">${l.type||'—'}</td>
-      <td data-field="city" data-val="${l.city||''}">${l.city||'—'}</td>
+      <td style="color:#e2e4ef;font-weight:500">${l.name}</td>
+      <td>${l.short_name}</td>
+      <td>${l.type||'—'}</td>
+      <td>${l.city||'—'}</td>
       <td style="color:#555a72">${l.placeholder_container_id ? (cmap[l.placeholder_container_id]||l.placeholder_container_id) : '—'}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="deleteLoc(${l.location_id})" title="Delete">&#x2715;</button></td>
+      <td><button class="btn-icon" onclick="deleteLoc(${l.location_id})" title="Delete">✕</button></td>
     </tr>`).join('');
 }
 
@@ -1004,14 +670,13 @@ function renderContacts(){
   const tbody = document.getElementById('con-tbody');
   if(!allContacts.length){tbody.innerHTML=emptyRow('No contacts found',6);return;}
   tbody.innerHTML = allContacts.map(c=>`
-    <tr data-id="${c.contact_id}">
+    <tr>
       <td style="color:#555a72">${c.contact_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="company" data-val="${c.company||''}">${c.company||'—'}</td>
-      <td data-field="first_name" data-val="${c.first_name||''}">${c.first_name||'—'}</td>
-      <td data-field="last_name" data-val="${c.last_name||''}">${c.last_name||'—'}</td>
-      <td data-field="phone" data-val="${c.phone||''}">${c.phone||'—'}</td>
-      <td data-field="email" data-val="${c.email||''}">${c.email||'—'}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="deleteCon(${c.contact_id})" title="Delete">&#x2715;</button></td>
+      <td style="color:#e2e4ef;font-weight:500">${c.company||'—'}</td>
+      <td>${[c.first_name,c.last_name].filter(Boolean).join(' ')||'—'}</td>
+      <td>${c.phone||'—'}</td>
+      <td>${c.email||'—'}</td>
+      <td><button class="btn-icon" onclick="deleteCon(${c.contact_id})" title="Delete">✕</button></td>
     </tr>`).join('');
 }
 
@@ -1070,7 +735,6 @@ function closeModal(id){ document.getElementById(id).style.display='none'; }
 function openAddModal(){
   fxRowCount = 0;
   document.getElementById('fx-rows').innerHTML = '';
-  fxRowCount = 0;
   addFxRow();
   populateContainerSelect();
   populateNewContainerSelects();
@@ -1105,110 +769,25 @@ function populateNewContainerSelects(){
 }
 
 // ── Fixture rows ──────────────────────────────────────────────
-// ── Combobox helpers ─────────────────────────────────────────
-function buildCombo(inputId, options, onSelect){
-  const input = document.getElementById(inputId);
-  if(!input) return;
-  const wrap = input.parentElement;
-  wrap.classList.add('combo-wrap');
-  let drop = wrap.querySelector('.combo-drop');
-  if(!drop){ drop = document.createElement('div'); drop.className='combo-drop'; wrap.appendChild(drop); }
-
-  function renderOpts(q){
-    const filtered = options.filter(o=>!q||o.toLowerCase().includes(q.toLowerCase()));
-    const showNew = q && !options.some(o=>o.toLowerCase()===q.toLowerCase());
-    drop.innerHTML =
-      filtered.map(o=>`<div class="combo-opt" data-val="${o}">${o}</div>`).join('') +
-      (showNew ? `<div class="combo-opt new-opt" data-val="${q}">+ Add "${q}"</div>` : '');
-    drop.querySelectorAll('.combo-opt').forEach(el=>{
-      el.addEventListener('mousedown', e=>{
-        e.preventDefault();
-        input.value = el.dataset.val;
-        wrap.classList.remove('open');
-        if(onSelect) onSelect(el.dataset.val);
-      });
-    });
-  }
-
-  input.addEventListener('focus', ()=>{ renderOpts(input.value); wrap.classList.add('open'); });
-  input.addEventListener('input', ()=>{ renderOpts(input.value); wrap.classList.add('open'); });
-  input.addEventListener('blur',  ()=>{ setTimeout(()=>wrap.classList.remove('open'),150); });
-  renderOpts('');
-}
-
-function getUnique(field){ return [...new Set(allFixtures.map(f=>f[field]).filter(Boolean))].sort(); }
-
-function getSubcatsForCat(cat){
-  return [...new Set(allFixtures.filter(f=>f.category===cat).map(f=>f.subcategory).filter(Boolean))].sort();
-}
-function getMfrsForCat(cat){
-  return [...new Set(allFixtures.filter(f=>!cat||f.category===cat).map(f=>f.manufacturer).filter(Boolean))].sort();
-}
-function getModelsForMfr(mfr, cat){
-  return [...new Set(allFixtures.filter(f=>(!mfr||f.manufacturer===mfr)&&(!cat||f.category===cat)).map(f=>f.model).filter(Boolean))].sort();
-}
-function getParamsForModel(model, mfr){
-  return allFixtures.find(f=>f.model===model&&(!mfr||f.manufacturer===mfr))||null;
-}
-
-function wireRowCombos(id){
-  const catInput = document.getElementById('fx-cat-'+id);
-  const subInput = document.getElementById('fx-sub-'+id);
-  const mfrInput = document.getElementById('fx-mfr-'+id);
-  const mdlInput = document.getElementById('fx-mdl-'+id);
-  const wtInput  = document.getElementById('fx-wt-'+id);
-  const pwInput  = document.getElementById('fx-pw-'+id);
-
-  buildCombo('fx-cat-'+id, getUnique('category'), (cat)=>{
-    buildCombo('fx-sub-'+id, getSubcatsForCat(cat));
-    buildCombo('fx-mfr-'+id, getMfrsForCat(cat), (mfr)=>{
-      buildCombo('fx-mdl-'+id, getModelsForMfr(mfr, cat), (mdl)=>{
-        const p = getParamsForModel(mdl, mfr);
-        if(p){ if(p.weight_kg!=null) wtInput.value=p.weight_kg; if(p.power_w!=null) pwInput.value=p.power_w; }
-      });
-    });
-    buildCombo('fx-mdl-'+id, getModelsForMfr(mfrInput.value, cat), (mdl)=>{
-      const p = getParamsForModel(mdl, mfrInput.value);
-      if(p){ if(p.weight_kg!=null) wtInput.value=p.weight_kg; if(p.power_w!=null) pwInput.value=p.power_w; }
-    });
-  });
-
-  buildCombo('fx-sub-'+id, getUnique('subcategory'));
-  buildCombo('fx-mfr-'+id, getMfrsForCat(''), (mfr)=>{
-    const cat = catInput.value;
-    buildCombo('fx-mdl-'+id, getModelsForMfr(mfr, cat), (mdl)=>{
-      const p = getParamsForModel(mdl, mfr);
-      if(p){ if(p.weight_kg!=null) wtInput.value=p.weight_kg; if(p.power_w!=null) pwInput.value=p.power_w; }
-    });
-  });
-  buildCombo('fx-mdl-'+id, getModelsForMfr('',''), (mdl)=>{
-    const mfr = mfrInput.value;
-    const p = getParamsForModel(mdl, mfr);
-    if(p){ if(p.weight_kg!=null) wtInput.value=p.weight_kg; if(p.power_w!=null) pwInput.value=p.power_w; }
-  });
-}
-
 function addFxRow(){
   fxRowCount++;
   const id = fxRowCount;
-  const storageStatus = allStatuses.find(s=>s.name==='in storage');
-  const statusOpts = allStatuses.map(s=>`<option value="${s.status_id}" ${storageStatus&&s.status_id===storageStatus.status_id?'selected':''}>${s.name}</option>`).join('');
+  const statusOpts = allStatuses.map(s=>`<option value="${s.status_id}">${s.name}</option>`).join('');
   const tr = document.createElement('tr');
   tr.id = 'fxrow-'+id;
   tr.innerHTML = `
     <td><input type="text" placeholder="Name *" id="fx-name-${id}"></td>
-    <td><div class="combo-wrap"><input type="text" placeholder="Category" id="fx-cat-${id}" autocomplete="off"></div></td>
-    <td><div class="combo-wrap"><input type="text" placeholder="Subcategory" id="fx-sub-${id}" autocomplete="off"></div></td>
-    <td><div class="combo-wrap"><input type="text" placeholder="Mfr" id="fx-mfr-${id}" autocomplete="off"></div></td>
-    <td><div class="combo-wrap"><input type="text" placeholder="Model" id="fx-mdl-${id}" autocomplete="off"></div></td>
+    <td><input type="text" placeholder="Category" id="fx-cat-${id}"></td>
+    <td><input type="text" placeholder="Subcategory" id="fx-sub-${id}"></td>
+    <td><input type="text" placeholder="Mfr" id="fx-mfr-${id}"></td>
+    <td><input type="text" placeholder="Model" id="fx-mdl-${id}"></td>
     <td><input type="number" value="1" min="1" id="fx-qty-${id}" style="width:100%"></td>
     <td><input type="number" placeholder="0" step="0.1" id="fx-wt-${id}" style="width:100%"></td>
     <td><input type="number" placeholder="0" id="fx-pw-${id}" style="width:100%"></td>
     <td><select id="fx-st-${id}" style="width:100%">${statusOpts}</select></td>
     <td><input type="text" placeholder="Note" id="fx-nt-${id}"></td>
-    <td><button class="btn-danger-sm" onclick="removeFxRow(${id})">&#x2715;</button></td>`;
+    <td><button class="btn-danger-sm" onclick="removeFxRow(${id})">✕</button></td>`;
   document.getElementById('fx-rows').appendChild(tr);
-  wireRowCombos(id);
 }
 
 function removeFxRow(id){
@@ -1302,6 +881,7 @@ async function openContainerModal(editId=null){
   editingContainerId = editId;
   const title = document.getElementById('container-modal-title');
 
+  // populate location and status dropdowns
   const locSel = document.getElementById('c-location');
   locSel.innerHTML = '<option value="">— none —</option>';
   allLocations.forEach(l=> locSel.innerHTML += `<option value="${l.location_id}">${l.name} (${l.short_name})</option>`);
@@ -1309,26 +889,20 @@ async function openContainerModal(editId=null){
   stSel.innerHTML = '<option value="">— none —</option>';
   allStatuses.forEach(s=> stSel.innerHTML += `<option value="${s.status_id}">${s.name}</option>`);
 
-  // wire category and type combos
-  const ctCats  = [...new Set(allContainers.map(c=>c.category).filter(Boolean))].sort();
-  const ctTypes = [...new Set(allContainers.map(c=>c.container_type).filter(Boolean))].sort();
-  buildCombo('c-cat',  ctCats,  ()=>{});
-  buildCombo('c-type', ctTypes, ()=>{});
-
   if(editId){
     title.textContent = 'Edit container';
     const c = allContainers.find(c=>c.container_id===editId);
     if(c){
       document.getElementById('c-name').value = c.short_name||'';
-      document.getElementById('c-cat').value  = c.category||'';
+      document.getElementById('c-cat').value = c.category||'';
       document.getElementById('c-type').value = c.container_type||'';
-      document.getElementById('c-w').value    = c.width_cm||'';
-      document.getElementById('c-d').value    = c.depth_cm||'';
-      document.getElementById('c-h').value    = c.height_cm||'';
-      document.getElementById('c-wt').value   = c.weight_kg||'';
+      document.getElementById('c-w').value = c.width_cm||'';
+      document.getElementById('c-d').value = c.depth_cm||'';
+      document.getElementById('c-h').value = c.height_cm||'';
+      document.getElementById('c-wt').value = c.weight_kg||'';
       document.getElementById('c-note').value = c.note||'';
       locSel.value = c.location_id||'';
-      stSel.value  = c.status_id||'';
+      stSel.value = c.status_id||'';
     }
   } else {
     title.textContent = 'New container';
@@ -1444,263 +1018,7 @@ document.querySelectorAll('.modal-bg').forEach(bg=>{
   bg.addEventListener('click', e=>{ if(e.target===bg) bg.style.display='none'; });
 });
 
-// Close modal on background click
-document.querySelectorAll('.modal-bg').forEach(bg=>{
-  bg.addEventListener('click', e=>{ if(e.target===bg) bg.style.display='none'; });
-});
-
-// ── Inline row editing ────────────────────────────────────────
-// Generic: click a data row → cells become inputs → blur/Enter saves → Escape cancels
-
-function makeInlineEditable(tbodyId, entityType){
-  const tbody = document.getElementById(tbodyId);
-  if(!tbody) return;
-  tbody.addEventListener('dblclick', async e=>{
-    if(e.target.closest('button')) return;
-    const td = e.target.closest('td[data-field]');
-    if(!td) return;
-    const row = td.closest('tr[data-id]');
-    if(!row || row.dataset.editing) return;
-    activateInlineEdit(row, entityType, td);
-  });
-}
-
-// Returns suggestion list for a given field + entityType
-function inlineOpts(field, entityType, row){
-  if(entityType==='fixture'){
-    if(field==='category')    return getUnique('category');
-    if(field==='subcategory'){
-      const catTd = row.querySelector('td[data-field="category"]');
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getSubcatsForCat(cat);
-    }
-    if(field==='manufacturer'){
-      const catTd = row.querySelector('td[data-field="category"]');
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getMfrsForCat(cat);
-    }
-    if(field==='model'){
-      const mfrTd = row.querySelector('td[data-field="manufacturer"]');
-      const catTd = row.querySelector('td[data-field="category"]');
-      const mfr = mfrTd ? (mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value : '';
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getModelsForMfr(mfr, cat);
-    }
-  }
-  if(entityType==='container'){
-    if(field==='category')       return [...new Set(allContainers.map(c=>c.category).filter(Boolean))].sort();
-    if(field==='container_type') return [...new Set(allContainers.map(c=>c.container_type).filter(Boolean))].sort();
-    if(field==='short_name')     return [];
-  }
-  if(entityType==='location'){
-    if(field==='type') return [...new Set(allLocations.map(l=>l.type).filter(Boolean))].sort();
-    if(field==='city') return [...new Set(allLocations.map(l=>l.city).filter(Boolean))].sort();
-  }
-  if(entityType==='contact'){
-    if(field==='company') return [...new Set(allContacts.map(c=>c.company).filter(Boolean))].sort();
-  }
-  return [];
-}
-
-function buildInlineCombo(inp, options, onPick){
-  let drop = inp.parentElement.querySelector('.combo-drop');
-  if(drop) drop.remove();
-  drop = document.createElement('div');
-  drop.className = 'combo-drop';
-  inp.parentElement.appendChild(drop);
-
-  function render(q){
-    const filtered = options.filter(o=>!q||o.toLowerCase().includes(q.toLowerCase()));
-    const showNew  = q && !options.some(o=>o.toLowerCase()===q.toLowerCase());
-    drop.innerHTML =
-      filtered.map(o=>`<div class="combo-opt" data-val="${o}">${o}</div>`).join('') +
-      (showNew ? `<div class="combo-opt new-opt" data-val="${q}">+ Add "${q}"</div>` : '');
-    drop.querySelectorAll('.combo-opt').forEach(el=>{
-      el.addEventListener('mousedown', e=>{
-        e.preventDefault();
-        inp.value = el.dataset.val;
-        drop.style.display='none';
-        if(onPick) onPick(el.dataset.val);
-      });
-    });
-    drop.style.display = filtered.length||showNew ? 'block' : 'none';
-  }
-
-  inp.addEventListener('input', ()=>render(inp.value));
-  inp.addEventListener('focus', ()=>render(inp.value));
-  inp.addEventListener('blur',  ()=>setTimeout(()=>{ drop.style.display='none'; }, 150));
-  render('');
-}
-
-function activateInlineEdit(row, entityType, focusTd){
-  if(editingRow && editingRow !== row) cancelInlineEdit(editingRow);
-  row.dataset.editing = '1';
-  editingRow = row;
-  row.classList.add('editable-row');
-
-  const cells = row.querySelectorAll('td[data-field]');
-  let firstInput = null;
-
-  cells.forEach(td=>{
-    const field = td.dataset.field;
-    const val   = td.dataset.val !== undefined ? td.dataset.val : td.textContent.trim();
-    const type  = td.dataset.type||'text';
-    td.dataset.orig = val;
-    td.classList.add('editable-cell');
-
-    if(type==='select'){
-      const opts = JSON.parse(td.dataset.opts||'[]');
-      const sel = document.createElement('select');
-      sel.className = 'edit-select';
-      opts.forEach(o=>{
-        const opt = document.createElement('option');
-        opt.value = o.v; opt.textContent = o.l;
-        if(String(o.v)===String(val)) opt.selected=true;
-        sel.appendChild(opt);
-      });
-      td.innerHTML=''; td.appendChild(sel);
-      if(td===focusTd) sel.focus();
-
-    } else if(type==='number' || type==='int'){
-      const inp = document.createElement('input');
-      inp.type = 'number';
-      inp.className = 'edit-input';
-      inp.value = val==='—'?'':val;
-      inp.step = type==='int' ? '1' : '0.01';
-      td.innerHTML=''; td.appendChild(inp);
-      if(!firstInput) firstInput = inp;
-      if(td===focusTd){ inp.focus(); inp.select(); }
-
-    } else {
-      // text with inline combobox
-      const wrap = document.createElement('div');
-      wrap.className = 'combo-wrap';
-      wrap.style.cssText = 'position:relative;width:100%';
-      const inp = document.createElement('input');
-      inp.type = 'text';
-      inp.className = 'edit-input';
-      inp.value = val==='—'?'':val;
-      inp.autocomplete = 'off';
-      wrap.appendChild(inp);
-      td.innerHTML=''; td.appendChild(wrap);
-
-      if(!firstInput) firstInput = inp;
-      if(td===focusTd){
-        inp.focus(); inp.select();
-        // only build combo on the cell that was double-clicked
-        const opts = inlineOpts(field, entityType, row);
-        if(opts.length){
-          let onPick = null;
-          if(field==='model'){
-            onPick = (mdl)=>{
-              const mfrTd = row.querySelector('td[data-field="manufacturer"]');
-              const mfr = mfrTd?(mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value:'';
-              const p = getParamsForModel(mdl, mfr);
-              if(p){
-                const wtTd = row.querySelector('td[data-field="weight_kg"]');
-                const pwTd = row.querySelector('td[data-field="power_w"]');
-                if(wtTd && p.weight_kg!=null){ const i=wtTd.querySelector('input'); if(i) i.value=p.weight_kg; }
-                if(pwTd && p.power_w!=null){  const i=pwTd.querySelector('input'); if(i) i.value=p.power_w; }
-              }
-            };
-          }
-          buildInlineCombo(inp, opts, onPick);
-        }
-      }
-    }
-  });
-
-  if(focusTd && !focusTd.querySelector(':focus') && firstInput){
-    firstInput.focus(); firstInput.select();
-  }
-
-  row.addEventListener('keydown', function handler(e){
-    if(e.key==='Enter'){ e.preventDefault(); saveInlineEdit(row, entityType); row.removeEventListener('keydown',handler); }
-    if(e.key==='Escape'){ cancelInlineEdit(row); row.removeEventListener('keydown',handler); }
-  });
-
-  setTimeout(()=>{
-    document.addEventListener('click', function handler(e){
-      if(!row.contains(e.target) && !e.target.closest('.combo-drop')){
-        saveInlineEdit(row, entityType);
-        document.removeEventListener('click', handler);
-      }
-    });
-  }, 150);
-}
-
-function cancelInlineEdit(row){
-  delete row.dataset.editing;
-  row.classList.remove('editable-row');
-  editingRow = null;
-  // Re-render the relevant table
-  renderContainers(); renderLocations(); renderContacts(); renderFixturesSafe();
-}
-
-function renderFixturesSafe(){ if(allFixtures.length) renderFixtures(allFixtures); }
-
-async function saveInlineEdit(row, entityType){
-  if(!row.dataset.editing) return;
-  delete row.dataset.editing;
-  row.classList.remove('editable-row','row-saving');
-  editingRow = null;
-
-  const id = parseInt(row.dataset.id);
-  const body = {};
-  row.querySelectorAll('td[data-field]').forEach(td=>{
-    const field = td.dataset.field;
-    const type  = td.dataset.type||'text';
-    const el    = td.querySelector('input,select');
-    let val = el ? el.value.trim() : td.dataset.orig;
-    if(val==='' || val==='—') val = null;
-    if(type==='number' && val!==null) val = parseFloat(val)||null;
-    if(type==='int'    && val!==null) val = parseInt(val)||null;
-    body[field] = val;
-  });
-
-  try{
-    if(entityType==='container'){
-      const orig = allContainers.find(c=>c.container_id===id)||{};
-      const merged = Object.assign({}, orig, body,
-        {location_id:body.location_id!==undefined?body.location_id:orig.location_id,
-         status_id:body.status_id!==undefined?body.status_id:orig.status_id});
-      await api('PUT','/containers/'+id, {
-        short_name:merged.short_name||orig.short_name,
-        category:merged.category||null, container_type:merged.container_type||null,
-        location_id:merged.location_id||null, status_id:merged.status_id||null,
-        weight_kg:merged.weight_kg||null, width_cm:merged.width_cm||null,
-        depth_cm:merged.depth_cm||null, height_cm:merged.height_cm||null, note:merged.note||null
-      });
-      await loadContainersData(); renderContainers();
-    } else if(entityType==='fixture'){
-      const orig = allFixtures.find(f=>f.fixture_id===id)||{};
-      await api('PUT','/fixtures/'+id, Object.assign({},orig,body));
-      await loadFixtures();
-    } else if(entityType==='location'){
-      const orig = allLocations.find(l=>l.location_id===id)||{};
-      await api('PUT','/locations/'+id, Object.assign({},orig,body));
-      await loadLocationsData(); renderLocations();
-    } else if(entityType==='contact'){
-      const orig = allContacts.find(c=>c.contact_id===id)||{};
-      await api('PUT','/contacts/'+id, Object.assign({},orig,body));
-      await loadContactsData(); renderContacts();
-    }
-    toast('Saved');
-  } catch(err){
-    toast('Save failed: '+err.message, true);
-    renderContainers(); renderLocations(); renderContacts(); renderFixturesSafe();
-  }
-}
-
-// ── Wire inline edit after init ───────────────────────────────
-function initInlineEdits(){
-  makeInlineEditable('ct-tbody', 'container');
-  makeInlineEditable('loc-tbody', 'location');
-  makeInlineEditable('con-tbody', 'contact');
-  makeInlineEditable('fx-tbody',  'fixture');
-}
-
-init().then(()=>{ initInlineEdits(); });
+init();
 </script>
 </body>
 </html>

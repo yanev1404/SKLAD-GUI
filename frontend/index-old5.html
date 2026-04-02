@@ -37,7 +37,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .filter-lbl{color:#555a72;font-size:11px;white-space:nowrap}
 .group-toggle-btn{background:#0b0d14;border:1px solid #2a2d3a;color:#555a72;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .12s}
 .group-toggle-btn.active{background:#161e40;border-color:#4f5fcc;color:#7b8cde}
-.ct-row{cursor:default}
+.ct-row{cursor:pointer}
 .ct-row:hover td{background:#161926}
 .ct-row td{transition:background .1s}
 .ct-expand{background:#0b0e18}
@@ -53,7 +53,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .edit-input{background:#0b0d14;border:1px solid #4f5fcc;border-radius:4px;color:#c8cce0;font-size:13px;padding:3px 6px;width:100%;outline:none;font-family:inherit}
 .edit-select{background:#0b0d14;border:1px solid #4f5fcc;border-radius:4px;color:#c8cce0;font-size:13px;padding:3px 6px;width:100%;outline:none;font-family:inherit}
 .row-saving{opacity:.5;pointer-events:none}
-.arrow-cell{width:24px;color:#555a72;font-size:10px;user-select:none;cursor:pointer}
+.arrow-cell{width:24px;color:#555a72;font-size:10px;user-select:none}
 .arrow-open{color:#7b8cde}
 .combo-wrap{position:relative;width:100%}
 .combo-wrap input{width:100%}
@@ -881,18 +881,16 @@ function renderContainers(){
     const expanded = expandedContainers.has(c.container_id);
     const arrow = expanded ? '&#x25BC;' : '&#x25B6;';
     const arrowCls = expanded ? 'arrow-open' : '';
-    const ctStatusOpts = JSON.stringify(allStatuses.map(s=>({v:s.status_id,l:s.name})));
-    const ctLocOpts    = JSON.stringify(allLocations.map(l=>({v:l.location_id,l:l.short_name})));
-    html += `<tr class="ct-row" id="ct-row-${c.container_id}" data-id="${c.container_id}">
-      <td class="arrow-cell ${arrowCls}" onclick="toggleContainer(event,${c.container_id})">${arrow}</td>
+    html += `<tr class="ct-row" id="ct-row-${c.container_id}" onclick="toggleContainer(event,${c.container_id})">
+      <td class="arrow-cell ${arrowCls}">${arrow}</td>
       <td style="color:#555a72">${c.container_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="short_name" data-val="${c.short_name||''}">${c.short_name}</td>
-      <td data-field="category" data-val="${c.category||''}">${c.category||'—'}</td>
-      <td data-field="container_type" data-val="${c.container_type||''}">${c.container_type||'—'}</td>
-      <td data-field="location_id" data-val="${c.location_id||''}" data-type="select" data-opts='${ctLocOpts}'>${c.location_id?(lmap[c.location_id]||c.location_id):'—'}</td>
-      <td data-field="width_cm" data-val="${c.width_cm||''}" data-type="number">${c.width_cm||'—'}</td>
-      <td data-field="weight_kg" data-val="${c.weight_kg!=null?c.weight_kg:''}" data-type="number">${c.weight_kg!=null?c.weight_kg:'—'}</td>
-      <td data-field="status_id" data-val="${c.status_id||''}" data-type="select" data-opts='${ctStatusOpts}'>${badge(statusName(c.status_id))}</td>
+      <td style="color:#e2e4ef;font-weight:500">${c.short_name}</td>
+      <td>${c.category||'—'}</td>
+      <td>${c.container_type||'—'}</td>
+      <td>${c.location_id?(lmap[c.location_id]||c.location_id):'—'}</td>
+      <td>${c.width_cm&&c.depth_cm&&c.height_cm?`${c.width_cm}×${c.depth_cm}×${c.height_cm}`:'—'}</td>
+      <td>${c.weight_kg!=null?c.weight_kg:'—'}</td>
+      <td>${badge(statusName(c.status_id))}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn-icon" onclick="deleteCt(${c.container_id})" title="Delete">&#x2715;</button>
       </td>
@@ -935,7 +933,7 @@ function renderContainers(){
 }
 
 function toggleContainer(e, id){
-  e.stopPropagation();
+  if(e.target.closest('button')) return;
   if(expandedContainers.has(id)) expandedContainers.delete(id);
   else expandedContainers.add(id);
   renderContainers();
@@ -1465,73 +1463,6 @@ function makeInlineEditable(tbodyId, entityType){
   });
 }
 
-// Returns suggestion list for a given field + entityType
-function inlineOpts(field, entityType, row){
-  if(entityType==='fixture'){
-    if(field==='category')    return getUnique('category');
-    if(field==='subcategory'){
-      const catTd = row.querySelector('td[data-field="category"]');
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getSubcatsForCat(cat);
-    }
-    if(field==='manufacturer'){
-      const catTd = row.querySelector('td[data-field="category"]');
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getMfrsForCat(cat);
-    }
-    if(field==='model'){
-      const mfrTd = row.querySelector('td[data-field="manufacturer"]');
-      const catTd = row.querySelector('td[data-field="category"]');
-      const mfr = mfrTd ? (mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value : '';
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getModelsForMfr(mfr, cat);
-    }
-  }
-  if(entityType==='container'){
-    if(field==='category')       return [...new Set(allContainers.map(c=>c.category).filter(Boolean))].sort();
-    if(field==='container_type') return [...new Set(allContainers.map(c=>c.container_type).filter(Boolean))].sort();
-    if(field==='short_name')     return [];
-  }
-  if(entityType==='location'){
-    if(field==='type') return [...new Set(allLocations.map(l=>l.type).filter(Boolean))].sort();
-    if(field==='city') return [...new Set(allLocations.map(l=>l.city).filter(Boolean))].sort();
-  }
-  if(entityType==='contact'){
-    if(field==='company') return [...new Set(allContacts.map(c=>c.company).filter(Boolean))].sort();
-  }
-  return [];
-}
-
-function buildInlineCombo(inp, options, onPick){
-  let drop = inp.parentElement.querySelector('.combo-drop');
-  if(drop) drop.remove();
-  drop = document.createElement('div');
-  drop.className = 'combo-drop';
-  inp.parentElement.appendChild(drop);
-
-  function render(q){
-    const filtered = options.filter(o=>!q||o.toLowerCase().includes(q.toLowerCase()));
-    const showNew  = q && !options.some(o=>o.toLowerCase()===q.toLowerCase());
-    drop.innerHTML =
-      filtered.map(o=>`<div class="combo-opt" data-val="${o}">${o}</div>`).join('') +
-      (showNew ? `<div class="combo-opt new-opt" data-val="${q}">+ Add "${q}"</div>` : '');
-    drop.querySelectorAll('.combo-opt').forEach(el=>{
-      el.addEventListener('mousedown', e=>{
-        e.preventDefault();
-        inp.value = el.dataset.val;
-        drop.style.display='none';
-        if(onPick) onPick(el.dataset.val);
-      });
-    });
-    drop.style.display = filtered.length||showNew ? 'block' : 'none';
-  }
-
-  inp.addEventListener('input', ()=>render(inp.value));
-  inp.addEventListener('focus', ()=>render(inp.value));
-  inp.addEventListener('blur',  ()=>setTimeout(()=>{ drop.style.display='none'; }, 150));
-  render('');
-}
-
 function activateInlineEdit(row, entityType, focusTd){
   if(editingRow && editingRow !== row) cancelInlineEdit(editingRow);
   row.dataset.editing = '1';
@@ -1560,56 +1491,19 @@ function activateInlineEdit(row, entityType, focusTd){
       });
       td.innerHTML=''; td.appendChild(sel);
       if(td===focusTd) sel.focus();
-
-    } else if(type==='number' || type==='int'){
+    } else {
       const inp = document.createElement('input');
-      inp.type = 'number';
+      inp.type = type==='number'?'number':'text';
       inp.className = 'edit-input';
       inp.value = val==='—'?'':val;
-      inp.step = type==='int' ? '1' : '0.01';
+      if(type==='number') inp.step='0.01';
       td.innerHTML=''; td.appendChild(inp);
       if(!firstInput) firstInput = inp;
       if(td===focusTd){ inp.focus(); inp.select(); }
-
-    } else {
-      // text with inline combobox
-      const wrap = document.createElement('div');
-      wrap.className = 'combo-wrap';
-      wrap.style.cssText = 'position:relative;width:100%';
-      const inp = document.createElement('input');
-      inp.type = 'text';
-      inp.className = 'edit-input';
-      inp.value = val==='—'?'':val;
-      inp.autocomplete = 'off';
-      wrap.appendChild(inp);
-      td.innerHTML=''; td.appendChild(wrap);
-
-      if(!firstInput) firstInput = inp;
-      if(td===focusTd){
-        inp.focus(); inp.select();
-        // only build combo on the cell that was double-clicked
-        const opts = inlineOpts(field, entityType, row);
-        if(opts.length){
-          let onPick = null;
-          if(field==='model'){
-            onPick = (mdl)=>{
-              const mfrTd = row.querySelector('td[data-field="manufacturer"]');
-              const mfr = mfrTd?(mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value:'';
-              const p = getParamsForModel(mdl, mfr);
-              if(p){
-                const wtTd = row.querySelector('td[data-field="weight_kg"]');
-                const pwTd = row.querySelector('td[data-field="power_w"]');
-                if(wtTd && p.weight_kg!=null){ const i=wtTd.querySelector('input'); if(i) i.value=p.weight_kg; }
-                if(pwTd && p.power_w!=null){  const i=pwTd.querySelector('input'); if(i) i.value=p.power_w; }
-              }
-            };
-          }
-          buildInlineCombo(inp, opts, onPick);
-        }
-      }
     }
   });
 
+  // If dblclicked cell wasn't focusable, focus first input
   if(focusTd && !focusTd.querySelector(':focus') && firstInput){
     firstInput.focus(); firstInput.select();
   }
@@ -1621,12 +1515,12 @@ function activateInlineEdit(row, entityType, focusTd){
 
   setTimeout(()=>{
     document.addEventListener('click', function handler(e){
-      if(!row.contains(e.target) && !e.target.closest('.combo-drop')){
+      if(!row.contains(e.target)){
         saveInlineEdit(row, entityType);
         document.removeEventListener('click', handler);
       }
     });
-  }, 150);
+  }, 100);
 }
 
 function cancelInlineEdit(row){

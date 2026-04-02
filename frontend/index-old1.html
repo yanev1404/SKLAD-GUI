@@ -37,31 +37,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .filter-lbl{color:#555a72;font-size:11px;white-space:nowrap}
 .group-toggle-btn{background:#0b0d14;border:1px solid #2a2d3a;color:#555a72;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .12s}
 .group-toggle-btn.active{background:#161e40;border-color:#4f5fcc;color:#7b8cde}
-.ct-row{cursor:default}
-.ct-row:hover td{background:#161926}
-.ct-row td{transition:background .1s}
-.ct-expand{background:#0b0e18}
-.ct-expand td{padding:0}
-.ct-inner{padding:10px 16px 14px 36px;border-top:1px solid #1a1d2a}
-.ct-totals{display:flex;gap:24px;padding:8px 0 10px;font-size:12px;color:#555a72}
-.ct-totals span{color:#9ba3c4}
-.fx-sub-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
-.fx-sub-table th{color:#555a72;font-size:10px;letter-spacing:.4px;text-transform:uppercase;padding:5px 8px;border-bottom:1px solid #1a1d2a;text-align:left}
-.fx-sub-table td{padding:5px 8px;border-bottom:1px solid #0f1117;color:#c8cce0}
-.fx-sub-table tr:last-child td{border-bottom:none}
-.editable-row td.editable-cell{cursor:text}
-.edit-input{background:#0b0d14;border:1px solid #4f5fcc;border-radius:4px;color:#c8cce0;font-size:13px;padding:3px 6px;width:100%;outline:none;font-family:inherit}
-.edit-select{background:#0b0d14;border:1px solid #4f5fcc;border-radius:4px;color:#c8cce0;font-size:13px;padding:3px 6px;width:100%;outline:none;font-family:inherit}
-.row-saving{opacity:.5;pointer-events:none}
-.arrow-cell{width:24px;color:#555a72;font-size:10px;user-select:none;cursor:pointer}
-.arrow-open{color:#7b8cde}
-.combo-wrap{position:relative;width:100%}
-.combo-wrap input{width:100%}
-.combo-drop{position:absolute;top:100%;left:0;right:0;background:#1a1d27;border:1px solid #4f5fcc;border-top:none;border-radius:0 0 6px 6px;z-index:300;max-height:180px;overflow-y:auto;display:none}
-.combo-wrap.open .combo-drop{display:block}
-.combo-opt{padding:7px 10px;font-size:12px;color:#c8cce0;cursor:pointer;white-space:nowrap}
-.combo-opt:hover{background:#1e2a50;color:#e2e4ef}
-.combo-opt.new-opt{color:#7b8cde;border-top:1px solid #2a2d3a}
 
 /* ── Cards / Tables ── */
 .card{background:#13151f;border:1px solid #1e2130;border-radius:8px;padding:16px;margin-bottom:16px}
@@ -109,7 +84,7 @@ textarea{resize:vertical}
 
 /* ── Modal ── */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
-.modal{background:#13151f;border:1px solid #2a2d3a;border-radius:10px;width:820px;max-width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
+.modal{background:#13151f;border:1px solid #2a2d3a;border-radius:10px;width:620px;max-width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
 .modal-sm{width:440px}
 .modal-header{padding:16px 20px;border-bottom:1px solid #1e2130;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#13151f;z-index:1}
 .modal-title{color:#e2e4ef;font-size:15px;font-weight:500}
@@ -261,7 +236,7 @@ textarea{resize:vertical}
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th style="width:20px"></th><th>ID</th><th>Name</th><th>Category</th><th>Type</th><th>Location</th>
+          <th>ID</th><th>Name</th><th>Category</th><th>Type</th><th>Location</th>
           <th>W×D×H (cm)</th><th>Tare (kg)</th><th>Status</th><th></th>
         </tr></thead>
         <tbody id="ct-tbody"></tbody>
@@ -302,7 +277,7 @@ textarea{resize:vertical}
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>ID</th><th>Company</th><th>First name</th><th>Last name</th><th>Phone</th><th>Email</th><th></th>
+          <th>ID</th><th>Company</th><th>Name</th><th>Phone</th><th>Email</th><th></th>
         </tr></thead>
         <tbody id="con-tbody"></tbody>
       </table>
@@ -384,8 +359,8 @@ textarea{resize:vertical}
 
       <hr class="divider">
       <div style="color:#555a72;font-size:10px;letter-spacing:.7px;text-transform:uppercase;margin-bottom:8px">Fixture rows</div>
-      <div class="table-wrap" style="overflow-x:auto;max-width:100%">
-        <table class="fx-table" style="min-width:900px">
+      <div class="table-wrap">
+        <table class="fx-table">
           <thead><tr>
             <th>Name *</th><th>Category</th><th>Subcategory</th><th>Manufacturer</th><th>Model</th>
             <th>Qty</th><th>Wt kg</th><th>Pwr W</th><th>Status</th><th>Note</th><th></th>
@@ -414,10 +389,10 @@ textarea{resize:vertical}
     <div class="modal-body">
       <div class="form-row c2">
         <div class="field"><label>Short name *</label><input type="text" id="c-name"></div>
-        <div class="field"><label>Category</label><div class="combo-wrap"><input type="text" id="c-cat" autocomplete="off" placeholder="e.g. Flight case"></div></div>
+        <div class="field"><label>Category</label><input type="text" id="c-cat"></div>
       </div>
       <div class="form-row c2">
-        <div class="field"><label>Type</label><div class="combo-wrap"><input type="text" id="c-type" autocomplete="off" placeholder="e.g. Road case"></div></div>
+        <div class="field"><label>Type</label><input type="text" id="c-type"></div>
         <div class="field"><label>Location</label><select id="c-location"><option value="">— none —</option></select></div>
       </div>
       <div class="form-row c3">
@@ -678,21 +653,20 @@ function renderFixtures(list){
   const lmap={};
   allLocations.forEach(l=>lmap[l.location_id]=l.short_name);
 
-  const statusOptsFor = (curId) => allStatuses.map(s=>`<option value="${s.status_id}" ${s.status_id===curId?'selected':''}>${s.name}</option>`).join('');
   const fxRow = f => `
-    <tr data-id="${f.fixture_id}">
+    <tr>
       <td style="color:#555a72">${f.fixture_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="short_name" data-val="${f.short_name||''}">${f.short_name}</td>
-      <td style="color:#9ba3c4" data-field="category" data-val="${f.category||''}">${f.category||'—'}</td>
-      <td style="color:#9ba3c4" data-field="subcategory" data-val="${f.subcategory||''}">${f.subcategory||'—'}</td>
-      <td data-field="manufacturer" data-val="${f.manufacturer||''}">${f.manufacturer||'—'}</td>
-      <td data-field="model" data-val="${f.model||''}">${f.model||'—'}</td>
-      <td data-field="quantity" data-val="${f.quantity}" data-type="int">${f.quantity}</td>
-      <td data-field="weight_kg" data-val="${f.weight_kg!=null?f.weight_kg:''}" data-type="number">${f.weight_kg!=null?f.weight_kg:'—'}</td>
+      <td style="color:#e2e4ef;font-weight:500">${f.short_name}</td>
+      <td style="color:#9ba3c4">${f.category||'—'}</td>
+      <td style="color:#9ba3c4">${f.subcategory||'—'}</td>
+      <td>${f.manufacturer||'—'}</td>
+      <td>${f.model||'—'}</td>
+      <td>${f.quantity}</td>
+      <td>${f.weight_kg!=null?f.weight_kg:'—'}</td>
       <td>${f.container_id?(cmap[f.container_id]||f.container_id):'—'}</td>
       <td>${(()=>{const c=allContainers.find(c=>c.container_id===f.container_id);return c&&c.location_id?lmap[c.location_id]||'—':'—';})()}</td>
-      <td data-field="status_id" data-val="${f.status_id||''}" data-type="select" data-opts='${JSON.stringify(allStatuses.map(s=>({v:s.status_id,l:s.name})))}'>${badge(statusName(f.status_id))}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="deleteFx(${f.fixture_id})" title="Delete">&#x2715;</button></td>
+      <td>${badge(statusName(f.status_id))}</td>
+      <td><button class="btn-icon" onclick="deleteFx(${f.fixture_id})" title="Delete">&#x2715;</button></td>
     </tr>`;
 
   if(fxGroupBy==='none'){
@@ -853,15 +827,12 @@ async function deleteFx(id){
 }
 
 // ── CONTAINERS data ──────────────────────────────────────────
-let expandedContainers = new Set();
-let editingRow = null;
-
 async function loadContainersData(){
   allContainers = await api('GET','/containers');
 }
 
 async function loadContainers(){
-  document.getElementById('ct-tbody').innerHTML = loadingRow(10);
+  document.getElementById('ct-tbody').innerHTML = loadingRow(9);
   await loadContainersData();
   renderContainers();
 }
@@ -869,76 +840,22 @@ async function loadContainers(){
 function renderContainers(){
   const tbody = document.getElementById('ct-tbody');
   const lmap = {}; allLocations.forEach(l=>lmap[l.location_id]=l.short_name);
-  if(!allContainers.length){tbody.innerHTML=emptyRow('No containers found',10);return;}
+  if(!allContainers.length){tbody.innerHTML=emptyRow('No containers found',9);return;}
   const q = (document.getElementById('ct-search')||{value:''}).value.toLowerCase();
-  const list = allContainers.filter(c=>
-    c.container_type!=='placeholder' &&
-    (!q||c.short_name.toLowerCase().includes(q)||(c.category||'').toLowerCase().includes(q)||(c.container_type||'').toLowerCase().includes(q))
-  );
-
-  let html = '';
-  list.forEach(c=>{
-    const expanded = expandedContainers.has(c.container_id);
-    const arrow = expanded ? '&#x25BC;' : '&#x25B6;';
-    const arrowCls = expanded ? 'arrow-open' : '';
-    const ctStatusOpts = JSON.stringify(allStatuses.map(s=>({v:s.status_id,l:s.name})));
-    const ctLocOpts    = JSON.stringify(allLocations.map(l=>({v:l.location_id,l:l.short_name})));
-    html += `<tr class="ct-row" id="ct-row-${c.container_id}" data-id="${c.container_id}">
-      <td class="arrow-cell ${arrowCls}" onclick="toggleContainer(event,${c.container_id})">${arrow}</td>
+  const list = allContainers.filter(c=>!q||c.short_name.toLowerCase().includes(q)||(c.category||'').toLowerCase().includes(q));
+  tbody.innerHTML = list.map(c=>`
+    <tr>
       <td style="color:#555a72">${c.container_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="short_name" data-val="${c.short_name||''}">${c.short_name}</td>
-      <td data-field="category" data-val="${c.category||''}">${c.category||'—'}</td>
-      <td data-field="container_type" data-val="${c.container_type||''}">${c.container_type||'—'}</td>
-      <td data-field="location_id" data-val="${c.location_id||''}" data-type="select" data-opts='${ctLocOpts}'>${c.location_id?(lmap[c.location_id]||c.location_id):'—'}</td>
-      <td data-field="width_cm" data-val="${c.width_cm||''}" data-type="number">${c.width_cm||'—'}</td>
-      <td data-field="weight_kg" data-val="${c.weight_kg!=null?c.weight_kg:''}" data-type="number">${c.weight_kg!=null?c.weight_kg:'—'}</td>
-      <td data-field="status_id" data-val="${c.status_id||''}" data-type="select" data-opts='${ctStatusOpts}'>${badge(statusName(c.status_id))}</td>
-      <td onclick="event.stopPropagation()">
-        <button class="btn-icon" onclick="deleteCt(${c.container_id})" title="Delete">&#x2715;</button>
-      </td>
-    </tr>`;
-    if(expanded){
-      const fixtures = allFixtures.filter(f=>f.container_id===c.container_id);
-      const fxWeight = fixtures.reduce((s,f)=>s+(parseFloat(f.weight_kg)||0)*(parseInt(f.quantity)||1),0);
-      const totalWt  = (parseFloat(c.weight_kg)||0) + fxWeight;
-      const vol = (c.width_cm&&c.depth_cm&&c.height_cm)
-        ? ((c.width_cm*c.depth_cm*c.height_cm)/1000000).toFixed(3)+' m³' : '—';
-      html += `<tr class="ct-expand" id="ct-exp-${c.container_id}">
-        <td colspan="10">
-          <div class="ct-inner">
-            <div class="ct-totals">
-              <div>Tare weight <span>${c.weight_kg!=null?c.weight_kg+'kg':'—'}</span></div>
-              <div>Fixtures weight <span>${fxWeight.toFixed(2)} kg</span></div>
-              <div>Total packed weight <span style="color:#e2e4ef;font-weight:500">${totalWt.toFixed(2)} kg</span></div>
-              <div>Volume <span>${vol}</span></div>
-              <div>Fixtures <span>${fixtures.length} type${fixtures.length!==1?'s':''} / ${fixtures.reduce((s,f)=>s+(parseInt(f.quantity)||1),0)} units</span></div>
-            </div>
-            ${fixtures.length?`<table class="fx-sub-table">
-              <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Manufacturer</th><th>Model</th><th>Qty</th><th>Wt (kg)</th><th>Status</th></tr></thead>
-              <tbody>${fixtures.map(f=>`<tr>
-                <td style="color:#555a72">${f.fixture_id}</td>
-                <td style="color:#e2e4ef">${f.short_name}</td>
-                <td>${f.category||'—'}</td>
-                <td>${f.manufacturer||'—'}</td>
-                <td>${f.model||'—'}</td>
-                <td>${f.quantity}</td>
-                <td>${f.weight_kg!=null?f.weight_kg:'—'}</td>
-                <td>${badge(statusName(f.status_id))}</td>
-              </tr>`).join('')}</tbody>
-            </table>`:'<div style="color:#555a72;font-size:12px;padding:4px 0">No fixtures in this container</div>'}
-          </div>
-        </td>
-      </tr>`;
-    }
-  });
-  tbody.innerHTML = html;
-}
-
-function toggleContainer(e, id){
-  e.stopPropagation();
-  if(expandedContainers.has(id)) expandedContainers.delete(id);
-  else expandedContainers.add(id);
-  renderContainers();
+      <td style="color:#e2e4ef;font-weight:500">${c.short_name}</td>
+      <td>${c.category||'—'}</td>
+      <td>${c.container_type||'—'}</td>
+      <td>${c.location_id ? (lmap[c.location_id]||c.location_id) : '—'}</td>
+      <td>${c.width_cm&&c.depth_cm&&c.height_cm ? `${c.width_cm}×${c.depth_cm}×${c.height_cm}` : '—'}</td>
+      <td>${c.weight_kg!=null?c.weight_kg:'—'}</td>
+      <td>${badge(statusName(c.status_id))}</td>
+      <td><button class="btn-icon" onclick="openContainerModal(${c.container_id})" title="Edit">✎</button>
+          <button class="btn-icon" onclick="deleteCt(${c.container_id})" title="Delete">✕</button></td>
+    </tr>`).join('');
 }
 
 function filterContainers(){ renderContainers(); }
@@ -948,7 +865,6 @@ async function deleteCt(id){
   try{
     await api('DELETE','/containers/'+id);
     toast('Container deleted');
-    expandedContainers.delete(id);
     await loadContainers(); updateStats();
   } catch(e){toast('Delete failed: '+e.message, true);}
 }
@@ -969,14 +885,14 @@ function renderLocations(){
   if(!allLocations.length){tbody.innerHTML=emptyRow('No locations found',7);return;}
   const cmap={}; allContainers.forEach(c=>cmap[c.container_id]=c.short_name);
   tbody.innerHTML = allLocations.map(l=>`
-    <tr data-id="${l.location_id}">
+    <tr>
       <td style="color:#555a72">${l.location_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="name" data-val="${l.name||''}">${l.name||'—'}</td>
-      <td data-field="short_name" data-val="${l.short_name||''}">${l.short_name||'—'}</td>
-      <td data-field="type" data-val="${l.type||''}">${l.type||'—'}</td>
-      <td data-field="city" data-val="${l.city||''}">${l.city||'—'}</td>
+      <td style="color:#e2e4ef;font-weight:500">${l.name}</td>
+      <td>${l.short_name}</td>
+      <td>${l.type||'—'}</td>
+      <td>${l.city||'—'}</td>
       <td style="color:#555a72">${l.placeholder_container_id ? (cmap[l.placeholder_container_id]||l.placeholder_container_id) : '—'}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="deleteLoc(${l.location_id})" title="Delete">&#x2715;</button></td>
+      <td><button class="btn-icon" onclick="deleteLoc(${l.location_id})" title="Delete">✕</button></td>
     </tr>`).join('');
 }
 
@@ -1004,14 +920,13 @@ function renderContacts(){
   const tbody = document.getElementById('con-tbody');
   if(!allContacts.length){tbody.innerHTML=emptyRow('No contacts found',6);return;}
   tbody.innerHTML = allContacts.map(c=>`
-    <tr data-id="${c.contact_id}">
+    <tr>
       <td style="color:#555a72">${c.contact_id}</td>
-      <td style="color:#e2e4ef;font-weight:500" data-field="company" data-val="${c.company||''}">${c.company||'—'}</td>
-      <td data-field="first_name" data-val="${c.first_name||''}">${c.first_name||'—'}</td>
-      <td data-field="last_name" data-val="${c.last_name||''}">${c.last_name||'—'}</td>
-      <td data-field="phone" data-val="${c.phone||''}">${c.phone||'—'}</td>
-      <td data-field="email" data-val="${c.email||''}">${c.email||'—'}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="deleteCon(${c.contact_id})" title="Delete">&#x2715;</button></td>
+      <td style="color:#e2e4ef;font-weight:500">${c.company||'—'}</td>
+      <td>${[c.first_name,c.last_name].filter(Boolean).join(' ')||'—'}</td>
+      <td>${c.phone||'—'}</td>
+      <td>${c.email||'—'}</td>
+      <td><button class="btn-icon" onclick="deleteCon(${c.contact_id})" title="Delete">✕</button></td>
     </tr>`).join('');
 }
 
@@ -1070,7 +985,6 @@ function closeModal(id){ document.getElementById(id).style.display='none'; }
 function openAddModal(){
   fxRowCount = 0;
   document.getElementById('fx-rows').innerHTML = '';
-  fxRowCount = 0;
   addFxRow();
   populateContainerSelect();
   populateNewContainerSelects();
@@ -1105,110 +1019,25 @@ function populateNewContainerSelects(){
 }
 
 // ── Fixture rows ──────────────────────────────────────────────
-// ── Combobox helpers ─────────────────────────────────────────
-function buildCombo(inputId, options, onSelect){
-  const input = document.getElementById(inputId);
-  if(!input) return;
-  const wrap = input.parentElement;
-  wrap.classList.add('combo-wrap');
-  let drop = wrap.querySelector('.combo-drop');
-  if(!drop){ drop = document.createElement('div'); drop.className='combo-drop'; wrap.appendChild(drop); }
-
-  function renderOpts(q){
-    const filtered = options.filter(o=>!q||o.toLowerCase().includes(q.toLowerCase()));
-    const showNew = q && !options.some(o=>o.toLowerCase()===q.toLowerCase());
-    drop.innerHTML =
-      filtered.map(o=>`<div class="combo-opt" data-val="${o}">${o}</div>`).join('') +
-      (showNew ? `<div class="combo-opt new-opt" data-val="${q}">+ Add "${q}"</div>` : '');
-    drop.querySelectorAll('.combo-opt').forEach(el=>{
-      el.addEventListener('mousedown', e=>{
-        e.preventDefault();
-        input.value = el.dataset.val;
-        wrap.classList.remove('open');
-        if(onSelect) onSelect(el.dataset.val);
-      });
-    });
-  }
-
-  input.addEventListener('focus', ()=>{ renderOpts(input.value); wrap.classList.add('open'); });
-  input.addEventListener('input', ()=>{ renderOpts(input.value); wrap.classList.add('open'); });
-  input.addEventListener('blur',  ()=>{ setTimeout(()=>wrap.classList.remove('open'),150); });
-  renderOpts('');
-}
-
-function getUnique(field){ return [...new Set(allFixtures.map(f=>f[field]).filter(Boolean))].sort(); }
-
-function getSubcatsForCat(cat){
-  return [...new Set(allFixtures.filter(f=>f.category===cat).map(f=>f.subcategory).filter(Boolean))].sort();
-}
-function getMfrsForCat(cat){
-  return [...new Set(allFixtures.filter(f=>!cat||f.category===cat).map(f=>f.manufacturer).filter(Boolean))].sort();
-}
-function getModelsForMfr(mfr, cat){
-  return [...new Set(allFixtures.filter(f=>(!mfr||f.manufacturer===mfr)&&(!cat||f.category===cat)).map(f=>f.model).filter(Boolean))].sort();
-}
-function getParamsForModel(model, mfr){
-  return allFixtures.find(f=>f.model===model&&(!mfr||f.manufacturer===mfr))||null;
-}
-
-function wireRowCombos(id){
-  const catInput = document.getElementById('fx-cat-'+id);
-  const subInput = document.getElementById('fx-sub-'+id);
-  const mfrInput = document.getElementById('fx-mfr-'+id);
-  const mdlInput = document.getElementById('fx-mdl-'+id);
-  const wtInput  = document.getElementById('fx-wt-'+id);
-  const pwInput  = document.getElementById('fx-pw-'+id);
-
-  buildCombo('fx-cat-'+id, getUnique('category'), (cat)=>{
-    buildCombo('fx-sub-'+id, getSubcatsForCat(cat));
-    buildCombo('fx-mfr-'+id, getMfrsForCat(cat), (mfr)=>{
-      buildCombo('fx-mdl-'+id, getModelsForMfr(mfr, cat), (mdl)=>{
-        const p = getParamsForModel(mdl, mfr);
-        if(p){ if(p.weight_kg!=null) wtInput.value=p.weight_kg; if(p.power_w!=null) pwInput.value=p.power_w; }
-      });
-    });
-    buildCombo('fx-mdl-'+id, getModelsForMfr(mfrInput.value, cat), (mdl)=>{
-      const p = getParamsForModel(mdl, mfrInput.value);
-      if(p){ if(p.weight_kg!=null) wtInput.value=p.weight_kg; if(p.power_w!=null) pwInput.value=p.power_w; }
-    });
-  });
-
-  buildCombo('fx-sub-'+id, getUnique('subcategory'));
-  buildCombo('fx-mfr-'+id, getMfrsForCat(''), (mfr)=>{
-    const cat = catInput.value;
-    buildCombo('fx-mdl-'+id, getModelsForMfr(mfr, cat), (mdl)=>{
-      const p = getParamsForModel(mdl, mfr);
-      if(p){ if(p.weight_kg!=null) wtInput.value=p.weight_kg; if(p.power_w!=null) pwInput.value=p.power_w; }
-    });
-  });
-  buildCombo('fx-mdl-'+id, getModelsForMfr('',''), (mdl)=>{
-    const mfr = mfrInput.value;
-    const p = getParamsForModel(mdl, mfr);
-    if(p){ if(p.weight_kg!=null) wtInput.value=p.weight_kg; if(p.power_w!=null) pwInput.value=p.power_w; }
-  });
-}
-
 function addFxRow(){
   fxRowCount++;
   const id = fxRowCount;
-  const storageStatus = allStatuses.find(s=>s.name==='in storage');
-  const statusOpts = allStatuses.map(s=>`<option value="${s.status_id}" ${storageStatus&&s.status_id===storageStatus.status_id?'selected':''}>${s.name}</option>`).join('');
+  const statusOpts = allStatuses.map(s=>`<option value="${s.status_id}">${s.name}</option>`).join('');
   const tr = document.createElement('tr');
   tr.id = 'fxrow-'+id;
   tr.innerHTML = `
     <td><input type="text" placeholder="Name *" id="fx-name-${id}"></td>
-    <td><div class="combo-wrap"><input type="text" placeholder="Category" id="fx-cat-${id}" autocomplete="off"></div></td>
-    <td><div class="combo-wrap"><input type="text" placeholder="Subcategory" id="fx-sub-${id}" autocomplete="off"></div></td>
-    <td><div class="combo-wrap"><input type="text" placeholder="Mfr" id="fx-mfr-${id}" autocomplete="off"></div></td>
-    <td><div class="combo-wrap"><input type="text" placeholder="Model" id="fx-mdl-${id}" autocomplete="off"></div></td>
+    <td><input type="text" placeholder="Category" id="fx-cat-${id}"></td>
+    <td><input type="text" placeholder="Subcategory" id="fx-sub-${id}"></td>
+    <td><input type="text" placeholder="Mfr" id="fx-mfr-${id}"></td>
+    <td><input type="text" placeholder="Model" id="fx-mdl-${id}"></td>
     <td><input type="number" value="1" min="1" id="fx-qty-${id}" style="width:100%"></td>
     <td><input type="number" placeholder="0" step="0.1" id="fx-wt-${id}" style="width:100%"></td>
     <td><input type="number" placeholder="0" id="fx-pw-${id}" style="width:100%"></td>
     <td><select id="fx-st-${id}" style="width:100%">${statusOpts}</select></td>
     <td><input type="text" placeholder="Note" id="fx-nt-${id}"></td>
-    <td><button class="btn-danger-sm" onclick="removeFxRow(${id})">&#x2715;</button></td>`;
+    <td><button class="btn-danger-sm" onclick="removeFxRow(${id})">✕</button></td>`;
   document.getElementById('fx-rows').appendChild(tr);
-  wireRowCombos(id);
 }
 
 function removeFxRow(id){
@@ -1302,6 +1131,7 @@ async function openContainerModal(editId=null){
   editingContainerId = editId;
   const title = document.getElementById('container-modal-title');
 
+  // populate location and status dropdowns
   const locSel = document.getElementById('c-location');
   locSel.innerHTML = '<option value="">— none —</option>';
   allLocations.forEach(l=> locSel.innerHTML += `<option value="${l.location_id}">${l.name} (${l.short_name})</option>`);
@@ -1309,26 +1139,20 @@ async function openContainerModal(editId=null){
   stSel.innerHTML = '<option value="">— none —</option>';
   allStatuses.forEach(s=> stSel.innerHTML += `<option value="${s.status_id}">${s.name}</option>`);
 
-  // wire category and type combos
-  const ctCats  = [...new Set(allContainers.map(c=>c.category).filter(Boolean))].sort();
-  const ctTypes = [...new Set(allContainers.map(c=>c.container_type).filter(Boolean))].sort();
-  buildCombo('c-cat',  ctCats,  ()=>{});
-  buildCombo('c-type', ctTypes, ()=>{});
-
   if(editId){
     title.textContent = 'Edit container';
     const c = allContainers.find(c=>c.container_id===editId);
     if(c){
       document.getElementById('c-name').value = c.short_name||'';
-      document.getElementById('c-cat').value  = c.category||'';
+      document.getElementById('c-cat').value = c.category||'';
       document.getElementById('c-type').value = c.container_type||'';
-      document.getElementById('c-w').value    = c.width_cm||'';
-      document.getElementById('c-d').value    = c.depth_cm||'';
-      document.getElementById('c-h').value    = c.height_cm||'';
-      document.getElementById('c-wt').value   = c.weight_kg||'';
+      document.getElementById('c-w').value = c.width_cm||'';
+      document.getElementById('c-d').value = c.depth_cm||'';
+      document.getElementById('c-h').value = c.height_cm||'';
+      document.getElementById('c-wt').value = c.weight_kg||'';
       document.getElementById('c-note').value = c.note||'';
       locSel.value = c.location_id||'';
-      stSel.value  = c.status_id||'';
+      stSel.value = c.status_id||'';
     }
   } else {
     title.textContent = 'New container';
@@ -1444,263 +1268,7 @@ document.querySelectorAll('.modal-bg').forEach(bg=>{
   bg.addEventListener('click', e=>{ if(e.target===bg) bg.style.display='none'; });
 });
 
-// Close modal on background click
-document.querySelectorAll('.modal-bg').forEach(bg=>{
-  bg.addEventListener('click', e=>{ if(e.target===bg) bg.style.display='none'; });
-});
-
-// ── Inline row editing ────────────────────────────────────────
-// Generic: click a data row → cells become inputs → blur/Enter saves → Escape cancels
-
-function makeInlineEditable(tbodyId, entityType){
-  const tbody = document.getElementById(tbodyId);
-  if(!tbody) return;
-  tbody.addEventListener('dblclick', async e=>{
-    if(e.target.closest('button')) return;
-    const td = e.target.closest('td[data-field]');
-    if(!td) return;
-    const row = td.closest('tr[data-id]');
-    if(!row || row.dataset.editing) return;
-    activateInlineEdit(row, entityType, td);
-  });
-}
-
-// Returns suggestion list for a given field + entityType
-function inlineOpts(field, entityType, row){
-  if(entityType==='fixture'){
-    if(field==='category')    return getUnique('category');
-    if(field==='subcategory'){
-      const catTd = row.querySelector('td[data-field="category"]');
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getSubcatsForCat(cat);
-    }
-    if(field==='manufacturer'){
-      const catTd = row.querySelector('td[data-field="category"]');
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getMfrsForCat(cat);
-    }
-    if(field==='model'){
-      const mfrTd = row.querySelector('td[data-field="manufacturer"]');
-      const catTd = row.querySelector('td[data-field="category"]');
-      const mfr = mfrTd ? (mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value : '';
-      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
-      return getModelsForMfr(mfr, cat);
-    }
-  }
-  if(entityType==='container'){
-    if(field==='category')       return [...new Set(allContainers.map(c=>c.category).filter(Boolean))].sort();
-    if(field==='container_type') return [...new Set(allContainers.map(c=>c.container_type).filter(Boolean))].sort();
-    if(field==='short_name')     return [];
-  }
-  if(entityType==='location'){
-    if(field==='type') return [...new Set(allLocations.map(l=>l.type).filter(Boolean))].sort();
-    if(field==='city') return [...new Set(allLocations.map(l=>l.city).filter(Boolean))].sort();
-  }
-  if(entityType==='contact'){
-    if(field==='company') return [...new Set(allContacts.map(c=>c.company).filter(Boolean))].sort();
-  }
-  return [];
-}
-
-function buildInlineCombo(inp, options, onPick){
-  let drop = inp.parentElement.querySelector('.combo-drop');
-  if(drop) drop.remove();
-  drop = document.createElement('div');
-  drop.className = 'combo-drop';
-  inp.parentElement.appendChild(drop);
-
-  function render(q){
-    const filtered = options.filter(o=>!q||o.toLowerCase().includes(q.toLowerCase()));
-    const showNew  = q && !options.some(o=>o.toLowerCase()===q.toLowerCase());
-    drop.innerHTML =
-      filtered.map(o=>`<div class="combo-opt" data-val="${o}">${o}</div>`).join('') +
-      (showNew ? `<div class="combo-opt new-opt" data-val="${q}">+ Add "${q}"</div>` : '');
-    drop.querySelectorAll('.combo-opt').forEach(el=>{
-      el.addEventListener('mousedown', e=>{
-        e.preventDefault();
-        inp.value = el.dataset.val;
-        drop.style.display='none';
-        if(onPick) onPick(el.dataset.val);
-      });
-    });
-    drop.style.display = filtered.length||showNew ? 'block' : 'none';
-  }
-
-  inp.addEventListener('input', ()=>render(inp.value));
-  inp.addEventListener('focus', ()=>render(inp.value));
-  inp.addEventListener('blur',  ()=>setTimeout(()=>{ drop.style.display='none'; }, 150));
-  render('');
-}
-
-function activateInlineEdit(row, entityType, focusTd){
-  if(editingRow && editingRow !== row) cancelInlineEdit(editingRow);
-  row.dataset.editing = '1';
-  editingRow = row;
-  row.classList.add('editable-row');
-
-  const cells = row.querySelectorAll('td[data-field]');
-  let firstInput = null;
-
-  cells.forEach(td=>{
-    const field = td.dataset.field;
-    const val   = td.dataset.val !== undefined ? td.dataset.val : td.textContent.trim();
-    const type  = td.dataset.type||'text';
-    td.dataset.orig = val;
-    td.classList.add('editable-cell');
-
-    if(type==='select'){
-      const opts = JSON.parse(td.dataset.opts||'[]');
-      const sel = document.createElement('select');
-      sel.className = 'edit-select';
-      opts.forEach(o=>{
-        const opt = document.createElement('option');
-        opt.value = o.v; opt.textContent = o.l;
-        if(String(o.v)===String(val)) opt.selected=true;
-        sel.appendChild(opt);
-      });
-      td.innerHTML=''; td.appendChild(sel);
-      if(td===focusTd) sel.focus();
-
-    } else if(type==='number' || type==='int'){
-      const inp = document.createElement('input');
-      inp.type = 'number';
-      inp.className = 'edit-input';
-      inp.value = val==='—'?'':val;
-      inp.step = type==='int' ? '1' : '0.01';
-      td.innerHTML=''; td.appendChild(inp);
-      if(!firstInput) firstInput = inp;
-      if(td===focusTd){ inp.focus(); inp.select(); }
-
-    } else {
-      // text with inline combobox
-      const wrap = document.createElement('div');
-      wrap.className = 'combo-wrap';
-      wrap.style.cssText = 'position:relative;width:100%';
-      const inp = document.createElement('input');
-      inp.type = 'text';
-      inp.className = 'edit-input';
-      inp.value = val==='—'?'':val;
-      inp.autocomplete = 'off';
-      wrap.appendChild(inp);
-      td.innerHTML=''; td.appendChild(wrap);
-
-      if(!firstInput) firstInput = inp;
-      if(td===focusTd){
-        inp.focus(); inp.select();
-        // only build combo on the cell that was double-clicked
-        const opts = inlineOpts(field, entityType, row);
-        if(opts.length){
-          let onPick = null;
-          if(field==='model'){
-            onPick = (mdl)=>{
-              const mfrTd = row.querySelector('td[data-field="manufacturer"]');
-              const mfr = mfrTd?(mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value:'';
-              const p = getParamsForModel(mdl, mfr);
-              if(p){
-                const wtTd = row.querySelector('td[data-field="weight_kg"]');
-                const pwTd = row.querySelector('td[data-field="power_w"]');
-                if(wtTd && p.weight_kg!=null){ const i=wtTd.querySelector('input'); if(i) i.value=p.weight_kg; }
-                if(pwTd && p.power_w!=null){  const i=pwTd.querySelector('input'); if(i) i.value=p.power_w; }
-              }
-            };
-          }
-          buildInlineCombo(inp, opts, onPick);
-        }
-      }
-    }
-  });
-
-  if(focusTd && !focusTd.querySelector(':focus') && firstInput){
-    firstInput.focus(); firstInput.select();
-  }
-
-  row.addEventListener('keydown', function handler(e){
-    if(e.key==='Enter'){ e.preventDefault(); saveInlineEdit(row, entityType); row.removeEventListener('keydown',handler); }
-    if(e.key==='Escape'){ cancelInlineEdit(row); row.removeEventListener('keydown',handler); }
-  });
-
-  setTimeout(()=>{
-    document.addEventListener('click', function handler(e){
-      if(!row.contains(e.target) && !e.target.closest('.combo-drop')){
-        saveInlineEdit(row, entityType);
-        document.removeEventListener('click', handler);
-      }
-    });
-  }, 150);
-}
-
-function cancelInlineEdit(row){
-  delete row.dataset.editing;
-  row.classList.remove('editable-row');
-  editingRow = null;
-  // Re-render the relevant table
-  renderContainers(); renderLocations(); renderContacts(); renderFixturesSafe();
-}
-
-function renderFixturesSafe(){ if(allFixtures.length) renderFixtures(allFixtures); }
-
-async function saveInlineEdit(row, entityType){
-  if(!row.dataset.editing) return;
-  delete row.dataset.editing;
-  row.classList.remove('editable-row','row-saving');
-  editingRow = null;
-
-  const id = parseInt(row.dataset.id);
-  const body = {};
-  row.querySelectorAll('td[data-field]').forEach(td=>{
-    const field = td.dataset.field;
-    const type  = td.dataset.type||'text';
-    const el    = td.querySelector('input,select');
-    let val = el ? el.value.trim() : td.dataset.orig;
-    if(val==='' || val==='—') val = null;
-    if(type==='number' && val!==null) val = parseFloat(val)||null;
-    if(type==='int'    && val!==null) val = parseInt(val)||null;
-    body[field] = val;
-  });
-
-  try{
-    if(entityType==='container'){
-      const orig = allContainers.find(c=>c.container_id===id)||{};
-      const merged = Object.assign({}, orig, body,
-        {location_id:body.location_id!==undefined?body.location_id:orig.location_id,
-         status_id:body.status_id!==undefined?body.status_id:orig.status_id});
-      await api('PUT','/containers/'+id, {
-        short_name:merged.short_name||orig.short_name,
-        category:merged.category||null, container_type:merged.container_type||null,
-        location_id:merged.location_id||null, status_id:merged.status_id||null,
-        weight_kg:merged.weight_kg||null, width_cm:merged.width_cm||null,
-        depth_cm:merged.depth_cm||null, height_cm:merged.height_cm||null, note:merged.note||null
-      });
-      await loadContainersData(); renderContainers();
-    } else if(entityType==='fixture'){
-      const orig = allFixtures.find(f=>f.fixture_id===id)||{};
-      await api('PUT','/fixtures/'+id, Object.assign({},orig,body));
-      await loadFixtures();
-    } else if(entityType==='location'){
-      const orig = allLocations.find(l=>l.location_id===id)||{};
-      await api('PUT','/locations/'+id, Object.assign({},orig,body));
-      await loadLocationsData(); renderLocations();
-    } else if(entityType==='contact'){
-      const orig = allContacts.find(c=>c.contact_id===id)||{};
-      await api('PUT','/contacts/'+id, Object.assign({},orig,body));
-      await loadContactsData(); renderContacts();
-    }
-    toast('Saved');
-  } catch(err){
-    toast('Save failed: '+err.message, true);
-    renderContainers(); renderLocations(); renderContacts(); renderFixturesSafe();
-  }
-}
-
-// ── Wire inline edit after init ───────────────────────────────
-function initInlineEdits(){
-  makeInlineEditable('ct-tbody', 'container');
-  makeInlineEditable('loc-tbody', 'location');
-  makeInlineEditable('con-tbody', 'contact');
-  makeInlineEditable('fx-tbody',  'fixture');
-}
-
-init().then(()=>{ initInlineEdits(); });
+init();
 </script>
 </body>
 </html>
