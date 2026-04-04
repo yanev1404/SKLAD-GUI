@@ -37,11 +37,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .filter-lbl{color:#555a72;font-size:11px;white-space:nowrap}
 .group-toggle-btn{background:#0b0d14;border:1px solid #2a2d3a;color:#555a72;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .12s}
 .group-toggle-btn.active{background:#161e40;border-color:#4f5fcc;color:#7b8cde}
-.shift-hover{background:#0d1830!important;outline:1px solid #2a4a7a;cursor:cell}
-.shift-selected{background:#0d1a30!important;outline:1px solid #4f5fcc}
-.shift-editing{background:#0a1220!important;outline:2px solid #4f5fcc}
-body.shift-mode *{cursor:cell!important}
-body.shift-mode td[data-field]{user-select:none}
 .ct-row{cursor:default}
 .ct-row:hover td{background:#161926}
 .ct-row td{transition:background .1s}
@@ -305,7 +300,7 @@ textarea{resize:vertical}
   <div class="stat-bar">
     <div class="stat" onclick="openDrill('events')">
       <div class="stat-val" id="stat-events">—</div>
-      <div class="stat-lbl">Upcoming events</div>
+      <div class="stat-lbl">Active events</div>
       <div class="stat-hint">click to view</div>
     </div>
     <div class="stat" onclick="openDrill('models')">
@@ -337,16 +332,26 @@ textarea{resize:vertical}
     </div>
     <div class="filter-bar">
       <span class="filter-lbl">Search</span>
-      <input type="text" id="fx-search" placeholder="Name, manufacturer, model..." style="width:200px" oninput="filterFixtures()">
+      <input type="text" id="fx-search" placeholder="Any field..." style="width:160px" oninput="filterFixtures()">
       <span class="filter-lbl">Category</span>
       <select id="fx-cat-filter" style="width:130px" onchange="filterFixtures()"><option value="">All</option></select>
       <span class="filter-lbl">Status</span>
       <select id="fx-status-filter" style="width:130px" onchange="filterFixtures()"><option value="">All</option></select>
+      <span class="filter-lbl">Container</span>
+      <select id="fx-container-filter" style="width:130px" onchange="filterFixtures()"><option value="">All</option></select>
+      <span class="filter-lbl">Location</span>
+      <select id="fx-location-filter" style="width:130px" onchange="filterFixtures()"><option value="">All</option></select>
+      <span class="filter-lbl" style="margin-left:8px">Group by</span>
+      <button class="group-toggle-btn active" id="grp-cat" onclick="setGroup('category')">Category</button>
+      <button class="group-toggle-btn" id="grp-loc" onclick="setGroup('location')">Location</button>
+      <button class="group-toggle-btn" id="grp-status" onclick="setGroup('status')">Status</button>
+      <button class="group-toggle-btn" id="grp-none" onclick="setGroup('none')">No grouping</button>
     </div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Name</th><th>Qty</th><th>Manufacturer</th><th>Model</th><th>Wt (kg)</th><th>Pwr (W)</th><th></th>
+          <th>ID</th><th>Name</th><th>Category</th><th>Subcategory</th><th>Manufacturer</th><th>Model</th>
+          <th>Qty</th><th>Wt (kg)</th><th>Container</th><th>Location</th><th>Status</th><th></th>
         </tr></thead>
         <tbody id="fx-tbody"></tbody>
       </table>
@@ -754,7 +759,7 @@ textarea{resize:vertical}
       <!-- Barcode scanner bar -->
       <div class="scanner-bar">
         <span class="scanner-label">&#x1F50D; Scan barcode</span>
-        <input type="text" id="barcode-input" placeholder="Scan container (ID &lt;100000) or fixture (ID ≥100000) then Enter..." autocomplete="off" onkeydown="onBarcodeKey(event)">
+        <input type="text" id="barcode-input" placeholder="Scan or type container ID then Enter..." autocomplete="off" onkeydown="onBarcodeKey(event)">
         <span id="scan-feedback" class="scan-fb"></span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;overflow:hidden;min-height:0">
@@ -908,7 +913,7 @@ function updateStats(){
   const ctOut   = allContainers.filter(c=>c.container_type!=='placeholder'&&!whLocationIds.has(c.location_id)).length;
   const totalCt = allContainers.filter(c=>c.container_type!=='placeholder').length;
   const allLoads = window._allLoads||[];
-  const now=new Date(); const activeEvents=(allEvents||[]).filter(e=>e.end_date&&new Date(e.end_date)>now).length;
+  const activeEvents = allLoads.filter(l=>l.status==='completed').length;
   const uniqueModels = new Set(allFixtures.map(f=>f.model).filter(Boolean)).size;
 
   document.getElementById('stat-events').textContent    = activeEvents;
@@ -928,7 +933,14 @@ function populateStatusFilters(){
   [...new Set(allFixtures.map(f=>f.category).filter(Boolean))].sort()
     .forEach(c=> catSel.innerHTML += `<option value="${c}">${c}</option>`);
 
+  const ctSel = document.getElementById('fx-container-filter');
+  ctSel.innerHTML = '<option value="">All</option>';
+  allContainers.filter(c=>c.container_type!=='placeholder')
+    .forEach(c=> ctSel.innerHTML += `<option value="${c.container_id}">${c.short_name}</option>`);
 
+  const locSel = document.getElementById('fx-location-filter');
+  locSel.innerHTML = '<option value="">All</option>';
+  allLocations.forEach(l=> locSel.innerHTML += `<option value="${l.location_id}">${l.short_name}</option>`);
 }
 
 function setGroup(mode){
@@ -965,69 +977,79 @@ function getFixtureLocation(f){
 
 function renderFixtures(list){
   const tbody = document.getElementById('fx-tbody');
-  if(!list.length){tbody.innerHTML=emptyRow('No fixtures found',7);return;}
+  if(!list.length){tbody.innerHTML=emptyRow('No fixtures found',12);return;}
+  const cmap={};
+  allContainers.forEach(c=>cmap[c.container_id]=c.short_name);
+  const lmap={};
+  allLocations.forEach(l=>lmap[l.location_id]=l.short_name);
 
-  // Group ALL fixtures by short_name only (across all containers/locations)
-  const byName = {};
+  // Group fixtures by short_name + container → one display row per group
+  const groupKey = f => f.short_name + '|' + (f.container_id||'');
+  const byKey = {};
   list.forEach(f=>{
-    const k = f.short_name;
-    if(!byName[k]) byName[k]=[];
-    byName[k].push(f);
+    const k = groupKey(f);
+    if(!byKey[k]) byKey[k]=[];
+    byKey[k].push(f);
   });
 
-  const fxRow = (name, grp) => {
+  const fxRow = (grp) => {
     const f = grp[0];
     const qty = grp.length;
     const statusOpts = JSON.stringify(allStatuses.map(s=>({v:s.status_id,l:s.name})));
-    // Use first fixture ID as anchor for inline edit; edits apply to all same-name
-    return `<tr data-id="${f.fixture_id}" data-name="${name.replace(/"/g,'&quot;')}" style="cursor:default">
+    const gk = groupKey(f).replace(/'/g,"\'");
+    const cid = f.container_id||'null';
+    return `<tr data-id="${f.fixture_id}" style="cursor:default">
+      <td style="color:#555a72">${f.fixture_id}${qty>1?'…':''}</td>
       <td style="color:#e2e4ef;font-weight:500" data-field="short_name" data-val="${f.short_name||''}">${f.short_name}</td>
-      <td>
-        <span style="color:#e2e4ef;font-weight:500">${qty}</span>
-        <button class="btn-icon" onclick="openFxDetail(event,'${name.replace(/'/g,"\'")}')" title="View individual items" style="margin-left:4px;font-size:12px">&#x1F50D;</button>
-      </td>
+      <td style="color:#9ba3c4" data-field="category" data-val="${f.category||''}">${f.category||'—'}</td>
+      <td style="color:#9ba3c4" data-field="subcategory" data-val="${f.subcategory||''}">${f.subcategory||'—'}</td>
       <td data-field="manufacturer" data-val="${f.manufacturer||''}">${f.manufacturer||'—'}</td>
       <td data-field="model" data-val="${f.model||''}">${f.model||'—'}</td>
+      <td style="color:#e2e4ef;font-weight:500">${qty}</td>
       <td data-field="weight_kg" data-val="${f.weight_kg!=null?f.weight_kg:''}" data-type="number">${f.weight_kg!=null?f.weight_kg:'—'}</td>
-      <td data-field="power_w" data-val="${f.power_w!=null?f.power_w:''}" data-type="number">${f.power_w!=null?f.power_w:'—'}</td>
-      <td></td>
+      <td>${f.container_id?(cmap[f.container_id]||f.container_id):'—'}</td>
+      <td>${(()=>{const ct=allContainers.find(x=>x.container_id===f.container_id);if(!ct) return '—'; return ct.location_id?lmap[ct.location_id]||ct.location_id||'—':'—';})()}</td>
+      <td data-field="status_id" data-val="${f.status_id||''}" data-type="select" data-opts='${statusOpts}'>${badge(statusName(f.status_id))}</td>
+      <td onclick="event.stopPropagation()">
+        ${qty>1?`<button class="btn-icon" onclick="openFxGroup(event,'${gk}',${cid})" title="View all ${qty} units">&#x1F50D;</button>`:''}
+        <button class="btn-icon" onclick="deleteFxGroup(event,'${gk}',${cid})" title="Delete all">&#x2715;</button>
+      </td>
     </tr>`;
   };
 
   if(fxGroupBy==='none'){
-    tbody.innerHTML = Object.entries(byName).map(([n,g])=>fxRow(n,g)).join('');
+    tbody.innerHTML = Object.values(byKey).map(fxRow).join('');
     return;
   }
 
-  // Secondary grouping by category
+  // Secondary grouping by category / status / location
   const getDisplayKey = f => {
     if(fxGroupBy==='category') return f.category||'Uncategorised';
-    if(fxGroupBy==='status'){
-      // Show most common status in group
-      const grp = byName[f.short_name]||[f];
-      const counts = {}; grp.forEach(x=>{ const s=statusName(x.status_id)||'No status'; counts[s]=(counts[s]||0)+1; });
-      return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+    if(fxGroupBy==='status')   return statusName(f.status_id)||'No status';
+    if(fxGroupBy==='location'){
+      const c=allContainers.find(c=>c.container_id===f.container_id);
+      if(!c||!c.location_id) return 'No location';
+      return lmap[c.location_id]||'Unknown';
     }
-    if(fxGroupBy==='location') return '(see detail)';
     return '—';
   };
 
   const displayGroups = {};
-  Object.entries(byName).forEach(([name,grp])=>{
+  Object.values(byKey).forEach(grp=>{
     const k = getDisplayKey(grp[0]);
     if(!displayGroups[k]) displayGroups[k]=[];
-    displayGroups[k].push([name,grp]);
+    displayGroups[k].push(grp);
   });
 
   let html='';
   Object.keys(displayGroups).sort().forEach(key=>{
     const collapsed = collapsedGroups.has(key);
     const arrow = collapsed ? '&#x25B6;' : '&#x25BC;';
-    const total = displayGroups[key].reduce((s,[,g])=>s+g.length,0);
+    const total = displayGroups[key].reduce((s,g)=>s+g.length,0);
     html += `<tr class="group-header" onclick="toggleGroup('${key.replace(/'/g,"\'")}')">
-      <td colspan="7">${arrow} ${key} <span class="group-count">${total} unit${total!==1?'s':''}</span></td>
+      <td colspan="12">${arrow} ${key} <span class="group-count">${total} unit${total!==1?'s':''}</span></td>
     </tr>`;
-    if(!collapsed) html += displayGroups[key].map(([n,g])=>fxRow(n,g)).join('');
+    if(!collapsed) html += displayGroups[key].map(fxRow).join('');
   });
   tbody.innerHTML = html;
 }
@@ -1036,19 +1058,31 @@ function filterFixtures(){
   const q   = document.getElementById('fx-search').value.toLowerCase();
   const s   = document.getElementById('fx-status-filter').value;
   const cat = document.getElementById('fx-cat-filter').value;
+  const cid = document.getElementById('fx-container-filter').value;
+  const lid = document.getElementById('fx-location-filter').value;
 
-  // Filter individual fixture records then pass all to renderFixtures (which re-groups by name)
   renderFixtures(allFixtures.filter(f=>{
     if(q){
+      const loc = getFixtureLocation(f);
+      const c   = allContainers.find(c=>c.container_id===f.container_id);
       const matchQ =
         f.short_name.toLowerCase().includes(q) ||
+        (f.category||'').toLowerCase().includes(q) ||
+        (f.subcategory||'').toLowerCase().includes(q) ||
         (f.manufacturer||'').toLowerCase().includes(q) ||
         (f.model||'').toLowerCase().includes(q) ||
-        (f.category||'').toLowerCase().includes(q);
+        (c ? c.short_name.toLowerCase().includes(q) : false) ||
+        (loc ? loc.short_name.toLowerCase().includes(q) : false) ||
+        (statusName(f.status_id)||'').toLowerCase().includes(q);
       if(!matchQ) return false;
     }
     if(s   && statusName(f.status_id)!==s) return false;
     if(cat && f.category!==cat) return false;
+    if(cid && String(f.container_id)!==cid) return false;
+    if(lid){
+      const ct=allContainers.find(x=>x.container_id===f.container_id);
+      if(!ct||String(ct.location_id)!==lid) return false;
+    }
     return true;
   }));
 }
@@ -1066,20 +1100,19 @@ async function openDrill(type){
   const whIds = new Set(allLocations.filter(l=>(l.type||'').toLowerCase().includes('warehouse')||l.short_name.includes('WH')).map(l=>l.location_id));
 
   if(type==='events'){
-    title.textContent='Upcoming events';
-    let events=allEvents||[];
-    if(!events.length){ try{ events=await api('GET','/events'); allEvents=events; }catch(e){} }
-    const now=new Date();
-    const upcoming=events.filter(e=>e.end_date&&new Date(e.end_date)>now).sort((a,b)=>new Date(a.start_date)-new Date(b.start_date));
-    if(!upcoming.length){body.innerHTML='<p style="padding:20px;color:#555a72">No upcoming events.</p>';return;}
+    title.textContent='Active loads (on location)';
+    let loads=window._allLoads||[];
+    if(!loads.length){ try{ loads=await api('GET','/loads'); window._allLoads=loads; }catch(e){} }
+    const active=loads.filter(l=>l.status==='completed');
+    if(!active.length){body.innerHTML='<p style="padding:20px;color:#555a72">No active loads.</p>';return;}
     body.innerHTML=`<div class="table-wrap" style="padding:4px 0"><table>
-      <thead><tr><th>Name</th><th>Type</th><th>Location</th><th>Start</th><th>End</th></tr></thead>
-      <tbody>${upcoming.map(e=>`<tr>
-        <td style="color:#e2e4ef;font-weight:500">${e.short_name}</td>
-        <td style="color:#9ba3c4">${e.event_type||'—'}</td>
-        <td>${lmap[e.location_id]||'—'}</td>
-        <td style="color:#555a72">${e.start_date?new Date(e.start_date).toLocaleDateString():'—'}</td>
-        <td style="color:#555a72">${e.end_date?new Date(e.end_date).toLocaleDateString():'—'}</td>
+      <thead><tr><th>Load ID</th><th>Origin</th><th>Destination</th><th>Created</th><th>Status</th></tr></thead>
+      <tbody>${active.map(l=>`<tr>
+        <td style="color:#555a72">${l.load_id}</td>
+        <td>${lmap[l.origin_location_id]||l.origin_location_id||'—'}</td>
+        <td style="color:#e2e4ef;font-weight:500">${lmap[l.destination_location_id]||l.destination_location_id||'—'}</td>
+        <td style="color:#555a72">${new Date(l.created_at).toLocaleDateString()}</td>
+        <td>${badge(l.status)}</td>
       </tr>`).join('')}</tbody></table></div>`;
   }
 
@@ -1137,84 +1170,55 @@ function drillContainerTable(list,cmap,lmap){
     </tr>`).join('')}</tbody></table></div>`;
 }
 
-// deleteFx removed — fixtures not deletable from UI
-
-function openFxDetail(e, name){
-  if(e) e.stopPropagation();
-  const grp = allFixtures.filter(f=>f.short_name===name).sort((a,b)=>a.fixture_id-b.fixture_id);
-  const cmap={}; allContainers.forEach(c=>cmap[c.container_id]=c.short_name);
-  const lmap={}; allLocations.forEach(l=>lmap[l.location_id]=l.short_name);
-
-  const thStyle = 'padding:6px 10px;border-bottom:1px solid #1a1d2a;color:#555a72;font-size:11px;text-align:left';
-  const tdStyle = 'padding:6px 8px;border-bottom:1px solid #111318';
-  const statusOpts = JSON.stringify(allStatuses.map(s=>({v:s.status_id,l:s.name})));
-  const ctOpts = JSON.stringify(allContainers.map(c=>({v:c.container_id,l:c.short_name})));
-
-  // Group fixtures by container
-  const byContainer = {};
-  grp.forEach(f=>{
-    const key = f.container_id||'__none__';
-    if(!byContainer[key]) byContainer[key]=[];
-    byContainer[key].push(f);
-  });
-
-  // Sort containers: named containers first by short_name, then no-container
-  const ctKeys = Object.keys(byContainer).sort((a,b)=>{
-    if(a==='__none__') return 1;
-    if(b==='__none__') return -1;
-    return (cmap[parseInt(a)]||'').localeCompare(cmap[parseInt(b)]||'');
-  });
-
-  const grpHdrStyle = 'padding:6px 10px;background:#0f1117;color:#7b8cde;font-size:11px;font-weight:500;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #1a1d2a';
-
-  let rows = '';
-  ctKeys.forEach(ctKey=>{
-    const fxList = byContainer[ctKey];
-    const ct = ctKey!=='__none__' ? allContainers.find(x=>x.container_id===parseInt(ctKey)) : null;
-    const ctName = ct ? ct.short_name : '(no container)';
-    const loc = ct&&ct.location_id ? lmap[ct.location_id]||ct.location_id : '—';
-    rows += `<tr><td colspan="7" style="${grpHdrStyle}">${ctName} · ${loc} · ${fxList.length} unit${fxList.length!==1?'s':''}</td></tr>`;
-    fxList.forEach(f=>{
-      rows += `<tr data-id="${f.fixture_id}" class="detail-row">
-        <td style="${tdStyle};color:#555a72">${f.fixture_id}</td>
-        <td style="${tdStyle}" data-field="manufacturer" data-val="${f.manufacturer||''}">${f.manufacturer||'—'}</td>
-        <td style="${tdStyle}" data-field="model" data-val="${f.model||''}">${f.model||'—'}</td>
-        <td style="${tdStyle}" data-field="container_id" data-val="${f.container_id||''}" data-type="select" data-opts='${ctOpts}'>${ctName}</td>
-        <td style="${tdStyle};color:#555a72">${loc}</td>
-        <td style="${tdStyle}" data-field="status_id" data-val="${f.status_id||''}" data-type="select" data-opts='${statusOpts}'>${badge(statusName(f.status_id))}</td>
-        <td style="${tdStyle}" data-field="note" data-val="${f.note||''}">${f.note||'—'}</td>
-      </tr>`;
-    });
-  });
-
-  const body = `<div style="padding:4px 0">
-    <p style="font-size:11px;color:#555a72;padding:0 4px 10px">Double-click any cell to edit. Location changes via loads only.</p>
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr>
-        <th style="${thStyle}">ID</th>
-        <th style="${thStyle}">Manufacturer</th>
-        <th style="${thStyle}">Model</th>
-        <th style="${thStyle}">Container</th>
-        <th style="${thStyle}">Location</th>
-        <th style="${thStyle}">Status</th>
-        <th style="${thStyle}">Note</th>
-      </tr></thead>
-      <tbody id="fx-detail-tbody">${rows}</tbody>
-    </table></div>
-  </div>`;
-
-  document.getElementById('drill-title').textContent = name+' — '+grp.length+' unit'+(grp.length!==1?'s':'');
-  document.getElementById('drill-body').innerHTML = body;
-  document.getElementById('modal-drill').style.display='flex';
-
-  // Wire shift-click edit on detail rows
-  wireDetailPopupEdit();
+async function deleteFx(id){
+  if(!confirm('Delete fixture '+id+'?')) return;
+  try{
+    await api('DELETE','/fixtures/'+id);
+    toast('Fixture deleted');
+    await loadFixtures(); updateStats();
+  } catch(e){toast('Delete failed: '+e.message, true);}
 }
 
-// Keep old name as alias for any remaining calls
-function openFxGroup(e, key, containerId){ openFxDetail(e, key.split('|')[0]); }
+function openFxGroup(e, key, containerId){
+  e.stopPropagation();
+  const parts = key.split('|');
+  const name = parts[0];
+  const grp = allFixtures.filter(f=>f.short_name===name && (f.container_id||'')===(containerId||''));
+  const body = `<div style="padding:4px 0">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>
+        <th style="padding:6px 10px;border-bottom:1px solid #1a1d2a;color:#555a72;font-size:11px;text-align:left">ID</th>
+        <th style="padding:6px 10px;border-bottom:1px solid #1a1d2a;color:#555a72;font-size:11px;text-align:left">Status</th>
+        <th style="padding:6px 10px;border-bottom:1px solid #1a1d2a;color:#555a72;font-size:11px;text-align:left">Note</th>
+        <th style="padding:6px 10px;border-bottom:1px solid #1a1d2a"></th>
+      </tr></thead>
+      <tbody>${grp.map(f=>`<tr>
+        <td style="padding:6px 10px;border-bottom:1px solid #111318;color:#555a72">${f.fixture_id}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #111318">${badge(statusName(f.status_id))}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #111318;color:#9ba3c4">${f.note||'—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #111318">
+          <button class="btn-icon" onclick="deleteFx(${f.fixture_id})" style="color:#664">&#x2715;</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+  document.getElementById('drill-title').textContent = name+' — '+grp.length+' units';
+  document.getElementById('drill-body').innerHTML = body;
+  document.getElementById('modal-drill').style.display='flex';
+}
 
-// deleteFxGroup removed — fixtures not deletable from UI
+async function deleteFxGroup(e, key, containerId){
+  e.stopPropagation();
+  const parts = key.split('|');
+  const name = parts[0];
+  const grp = allFixtures.filter(f=>f.short_name===name && (f.container_id||'')===(containerId||''));
+  if(!confirm('Delete all '+grp.length+' units of "'+name+'"?')) return;
+  try{
+    for(const f of grp) await api('DELETE','/fixtures/'+f.fixture_id);
+    toast(grp.length+' fixtures deleted');
+    await loadFixtures(); updateStats();
+  } catch(err){ toast('Delete failed: '+err.message, true); }
+}
 
 // ── CONTAINERS data ──────────────────────────────────────────
 let expandedContainers = new Set();
@@ -1316,30 +1320,13 @@ function toggleContainer(e, id){
 function filterContainers(){ renderContainers(); }
 
 async function deleteCt(id){
-  const c = allContainers.find(x=>x.container_id===id);
-  if(!c){ toast('Container not found', true); return; }
-  if(c.container_type==='placeholder'){ toast('Cannot delete placeholder containers', true); return; }
-  const fxs = allFixtures.filter(f=>f.container_id===id);
-  const loc = allLocations.find(l=>l.location_id===c.location_id);
-  const phId = loc?.placeholder_container_id;
-  const msg = fxs.length
-    ? `Delete container "${c.short_name}"? Its ${fxs.length} fixture${fxs.length!==1?'s':''} will be moved to the location placeholder.`
-    : `Delete container "${c.short_name}"?`;
-  if(!confirm(msg)) return;
+  if(!confirm('Delete container '+id+'? This will unlink its fixtures.')) return;
   try{
-    // Move fixtures to placeholder first
-    if(fxs.length && phId){
-      for(const f of fxs) await api('PUT','/fixtures/'+f.fixture_id, Object.assign({},
-        {short_name:f.short_name,category:f.category,subcategory:f.subcategory,
-         manufacturer:f.manufacturer,model:f.model,weight_kg:f.weight_kg,
-         power_w:f.power_w,status_id:f.status_id,note:f.note},
-        {container_id: phId}));
-    }
     await api('DELETE','/containers/'+id);
-    toast('Container deleted'+(fxs.length?' — '+fxs.length+' fixture(s) moved to placeholder':''));
+    toast('Container deleted');
     expandedContainers.delete(id);
-    await loadFixtures(); await loadContainers(); updateStats();
-  } catch(e){ toast('Delete failed: '+e.message, true); }
+    await loadContainers(); updateStats();
+  } catch(e){toast('Delete failed: '+e.message, true);}
 }
 
 // ── LOCATIONS data ───────────────────────────────────────────
@@ -1889,8 +1876,7 @@ function resetPackLoad(){
 // ── Step navigation ───────────────────────────────────────────
 function goToStep(n, force){
   if(n === 2 && !PL.originId){ toast('Select an origin location first', true); return; }
-  const hasAnything = Object.values(PL.selectedContainers||{}).some(e=>e.containerSelected) || Object.keys(PL.looseFixtures||{}).length>0;
-  if(n === 3 && !hasAnything){ toast('Select at least one container or item', true); return; }
+  if(n === 3 && Object.keys(PL.selectedContainers).length === 0){ toast('Add at least one container', true); return; }
   PL.step = n;
   savePL();
   document.querySelectorAll('.wizard-page').forEach(p=>p.classList.remove('active'));
@@ -2024,78 +2010,34 @@ async function saveInlineContact(){
   } catch(e){ toast('Error: '+e.message, true); }
 }
 
-// ── Step 2: barcode scanner (container ID < 100000, fixture ID >= 100000) ──
+// ── Step 2: barcode scanner ───────────────────────────────────
 function onBarcodeKey(e){
   if(e.key !== 'Enter') return;
   const raw = document.getElementById('barcode-input').value.trim();
   document.getElementById('barcode-input').value = '';
   if(!raw) return;
   const id = parseInt(raw);
-  if(!id){ showScanFeedback('Invalid: '+raw, false); return; }
-  if(id >= 100000){
-    scanFixtureById(id);
-  } else {
-    addContainerById(id);
-  }
-}
-
-function scanFixtureById(fid){
-  initPL();
-  const f = allFixtures.find(x=>x.fixture_id===fid);
-  if(!f){ showScanFeedback('Fixture '+fid+' not found', false); return; }
-  const c = allContainers.find(x=>x.container_id===f.container_id);
-  if(!c){ showScanFeedback('Fixture has no container', false); return; }
-  if(c.location_id !== PL.originId){ showScanFeedback(f.short_name+' not at origin', false); return; }
-  // Add 1 unit of this fixture as a loose item
-  if(!PL.looseFixtures) PL.looseFixtures={};
-  if(PL.looseFixtures[fid]){ showScanFeedback(f.short_name+' already in load', false); return; }
-  // If the container is already selected, instead unremove this fixture
-  const entry = PL.selectedContainers[f.container_id];
-  if(entry && entry.containerSelected){
-    const ef = entry.fixtures.find(x=>x.fixtureId===fid);
-    if(ef && ef.removed){ ef.removed=false; savePL(); renderAvailableContainers(); renderSelectedContainers(); updateLoadWeight(); showScanFeedback(f.short_name+' restored in '+c.short_name, true); return; }
-    showScanFeedback(f.short_name+' already included in '+c.short_name, false); return;
-  }
-  PL.looseFixtures[fid]={fixtureId:fid,shortName:f.short_name,category:f.category,subcategory:f.subcategory||'',sourceCid:f.container_id};
-  const itemCat = f.category||'Uncategorised';
-  const itemSub = f.subcategory||'';
-  if(isPlaceholderCt(c)){
-    // Loose item from placeholder — expand LOOSE tree
-    expandedPCats.add('LOOSE');
-    expandedPSubs.add('LCAT|'+itemCat);
-    expandedPCts.add('LSUB|'+itemCat+'|'+itemSub);
-    expandedSelContainers.add('LS'+itemCat+'|'+itemSub);
-    showScanFeedback(f.short_name+' added as loose ✓', true);
-  } else {
-    // Item from real container — expand that container in left panel
-    const ctCat = c.category||'Uncategorised';
-    expandedPCats.add('CT|'+ctCat);
-    expandedPCts.add('CT'+c.container_id);
-    expandedSelContainers.add('LS'+itemCat+'|'+itemSub);
-    showScanFeedback(f.short_name+' added from '+c.short_name+' ✓', true);
-  }
-  savePL(); renderAvailableContainers(); renderSelectedContainers(); updateLoadWeight();
+  if(!id){ showScanFeedback('Invalid barcode: '+raw, false); return; }
+  addContainerById(id);
 }
 
 async function addContainerById(id){
   const c = allContainers.find(c=>c.container_id===id);
   if(!c){ showScanFeedback('Container '+id+' not found', false); return; }
-  if(c.location_id !== PL.originId){ showScanFeedback(c.short_name+' not at origin', false); return; }
-  if(PL.selectedContainers[id]&&PL.selectedContainers[id].containerSelected){ showScanFeedback(c.short_name+' already added', false); return; }
-  if(c.container_type==='placeholder'){ showScanFeedback('Scan individual items to add loose', false); return; }
+  if(c.location_id !== PL.originId){ showScanFeedback(c.short_name+' is not at origin location', false); return; }
+  if(PL.selectedContainers[id]){ showScanFeedback(c.short_name+' already added', false); return; }
+  if(c.container_type==='placeholder'){ showScanFeedback('Cannot add placeholder containers', false); return; }
   // Check fixtures have in-storage items
   const fxs = allFixtures.filter(f=>f.container_id===id);
   PL.selectedContainers[id] = {
-    containerId: id, containerSelected: true,
+    containerId: id,
     fixtures: fxs.map(f=>({ fixtureId:f.fixture_id, shortName:f.short_name, category:f.category, subcategory:f.subcategory||'', removed:false }))
   };
-  // Auto-expand in right panel
-  expandedSelContainers.add('CT'+id);
   savePL();
   renderAvailableContainers();
   renderSelectedContainers();
   updateLoadWeight();
-  showScanFeedback(c.short_name+' added ✓', true);
+  showScanFeedback(c.short_name+' added', true);
 }
 
 function showScanFeedback(msg, ok){
@@ -2105,327 +2047,249 @@ function showScanFeedback(msg, ok){
   setTimeout(()=>{ el.textContent=''; el.className='scan-fb'; }, 2500);
 }
 
-// ── Step 2: left panel ───────────────────────────────────────
-// PL model:
-//   selectedContainers[cid] = { containerId, containerSelected, fixtures:[{fixtureId,shortName,category,subcategory,removed}] }
-//   looseFixtures[fid]      = { fixtureId, shortName, category, subcategory, sourceCid }
-//   looseSubSel[cat+'|'+sub] = true   ← tracks whether a LOOSE subcategory is "selected"
+// ── Step 2: left panel — fixture category tree ───────────────
+// PL selection model:
+//   PL.selectedContainers[cid] = { containerId, containerSelected, fixtures:[{fixtureId,shortName,category,subcategory,removed}] }
+//   PL.looseFixtures[fid] = { fixtureId, shortName, category, subcategory, containerId }
+//   (loose = item selected without its container → goes to destination placeholder)
 
-let expandedPCats = new Set();
-let expandedPSubs = new Set();
-let expandedPCts  = new Set();
+let expandedPCats   = new Set();
+let expandedPSubs   = new Set();
+let expandedPCts    = new Set();
 
 function initPL(){
-  if(!PL.looseFixtures)  PL.looseFixtures  = {};
-  if(!PL.looseSubSel)    PL.looseSubSel    = {};
+  if(!PL.looseFixtures) PL.looseFixtures = {};
 }
 
-// ── helpers ───────────────────────────────────────────────────
-function esc(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
-
-function isPlaceholderCt(c){ return c && c.container_type==='placeholder'; }
-
-function originNonPlaceholders(){
-  return allContainers.filter(c=> c.location_id===PL.originId && !isPlaceholderCt(c));
-}
-function originPlaceholders(){
-  return allContainers.filter(c=> c.location_id===PL.originId && isPlaceholderCt(c));
+function getPlaceholderIdForLocation(locId){
+  const loc = allLocations.find(l=>l.location_id===locId);
+  return loc ? loc.placeholder_container_id : null;
 }
 
-function fxsInCt(cid){ return allFixtures.filter(f=>f.container_id===cid); }
-function fxWtById(id){ return parseFloat(allFixtures.find(f=>f.fixture_id===id)?.weight_kg||0); }
-
-// ── renderAvailableContainers ─────────────────────────────────
 function renderAvailableContainers(){
   initPL();
   const panel = document.getElementById('ct-category-tiles');
   if(!PL.originId){ panel.innerHTML='<div style="color:#555a72;font-size:12px;padding:8px">Select an origin location first.</div>'; return; }
 
-  const nonPH = originNonPlaceholders();
-  const placeholders = originPlaceholders();
-
-  // Group non-placeholder containers by their container category
-  const ctByCat = {};
-  nonPH.forEach(c=>{
-    const cat = c.category||'Uncategorised';
-    if(!ctByCat[cat]) ctByCat[cat]=[];
-    ctByCat[cat].push(c.container_id);
+  // All fixtures at origin location (across all containers including placeholders)
+  const originFxs = allFixtures.filter(f=>{
+    const c = allContainers.find(x=>x.container_id===f.container_id);
+    return c && c.location_id===PL.originId;
   });
 
-  // Fixtures in placeholder containers grouped by item category → subcategory
-  const looseFxsByCatSub = {}; // itemCat → itemSub → [{fixture, sourceCid}]
-  placeholders.forEach(ph=>{
-    fxsInCt(ph.container_id).forEach(f=>{
-      const cat = f.category||'Uncategorised';
-      const sub = f.subcategory||'';
-      if(!looseFxsByCatSub[cat]) looseFxsByCatSub[cat]={};
-      if(!looseFxsByCatSub[cat][sub]) looseFxsByCatSub[cat][sub]=[];
-      looseFxsByCatSub[cat][sub].push({f, sourceCid: ph.container_id});
-    });
+  if(!originFxs.length){ panel.innerHTML='<div style="color:#555a72;font-size:12px;padding:8px">No fixtures at this location.</div>'; return; }
+
+  // Build category → subcategory → containers tree
+  const tree = {}; // cat → sub → Set of container_ids
+  originFxs.forEach(f=>{
+    const cat = f.category||'Uncategorised';
+    const sub = f.subcategory||'';
+    const cid = f.container_id;
+    if(!tree[cat]) tree[cat]={};
+    if(!tree[cat][sub]) tree[cat][sub]=new Set();
+    if(cid) tree[cat][sub].add(cid);
   });
 
   let html='';
-
-  // ── Regular container categories ─────────────────────────────
-  Object.keys(ctByCat).sort().forEach(cat=>{
-    const catOpen = expandedPCats.has('CT|'+cat);
-    const cids = ctByCat[cat];
+  Object.keys(tree).sort().forEach(cat=>{
+    const catOpen = expandedPCats.has(cat);
+    const subs = Object.keys(tree[cat]).sort();
+    const allCids = new Set();
+    subs.forEach(s=>tree[cat][s].forEach(id=>allCids.add(id)));
+    const catCount = allCids.size;
     html += `<div class="pcat-block">
-      <div class="pcat-header" onclick="togglePCat('CT|${esc(cat)}')">
+      <div class="pcat-header" onclick="togglePCat('${esc(cat)}')">
         <span class="pcat-arrow ${catOpen?'open':''}">&#x25B6;</span>
         <span class="pcat-name">${cat}</span>
-        <span class="pcat-count">${cids.length} container${cids.length!==1?'s':''}</span>
-      </div>
-      <div class="pcat-body ${catOpen?'open':''}">
-        ${renderPContainerList(cids)}
-      </div>
-    </div>`;
-  });
-
-  // ── LOOSE category ────────────────────────────────────────────
-  if(Object.keys(looseFxsByCatSub).length){
-    const looseOpen = expandedPCats.has('LOOSE');
-    const totalLooseFx = placeholders.reduce((s,ph)=>s+fxsInCt(ph.container_id).length,0);
-    html += `<div class="pcat-block">
-      <div class="pcat-header" onclick="togglePCat('LOOSE')">
-        <span class="pcat-arrow ${looseOpen?'open':''}">&#x25B6;</span>
-        <span class="pcat-name" style="color:#5a9ad0">LOOSE</span>
-        <span class="pcat-count">${totalLooseFx} item${totalLooseFx!==1?'s':''} in placeholders</span>
-      </div>
-      <div class="pcat-body ${looseOpen?'open':''}">
-        ${renderLooseCatTree(looseFxsByCatSub)}
-      </div>
-    </div>`;
-  }
-
-  panel.innerHTML = html || '<div style="color:#555a72;font-size:12px;padding:8px">No fixtures at this location.</div>';
-}
-
-// ── renderLooseCatTree ────────────────────────────────────────
-function renderLooseCatTree(looseFxsByCatSub){
-  let html='';
-  Object.keys(looseFxsByCatSub).sort().forEach(itemCat=>{
-    const catOpen = expandedPSubs.has('LCAT|'+itemCat);
-    const subs = Object.keys(looseFxsByCatSub[itemCat]).sort();
-    const totalInCat = subs.reduce((s,sub)=>s+looseFxsByCatSub[itemCat][sub].length,0);
-    html+=`<div class="psub-block">
-      <div class="psub-header" onclick="togglePSub('LCAT|${esc(itemCat)}','')">
-        <span class="pcat-arrow ${catOpen?'open':''}">&#x25B6;</span>
-        <span class="psub-name">${itemCat}</span>
-        <span class="psub-count">${totalInCat}</span>
+        <span class="pcat-count">${catCount} container${catCount!==1?'s':''}</span>
       </div>
       <div class="pcat-body ${catOpen?'open':''}">`;
 
     subs.forEach(sub=>{
-      const subKey = 'LSUB|'+itemCat+'|'+sub;
-      const subOpen = expandedPCts.has(subKey);
-      const fxList  = looseFxsByCatSub[itemCat][sub];
-      const subSel  = PL.looseSubSel && PL.looseSubSel[itemCat+'|'+sub];
-
-      // Count how many of this sub's fixtures are in looseFixtures
-      const allFids = fxList.map(x=>x.f.fixture_id);
-      const incFids = allFids.filter(fid=>PL.looseFixtures&&PL.looseFixtures[fid]);
-      const incCount= incFids.length;
-      const rowCls  = incCount>0 ? 'ct-loose' : '';
-
-      // Group by shortName for display
-      const grps={};
-      fxList.forEach(({f,sourceCid})=>{
-        if(!grps[f.short_name]) grps[f.short_name]=[];
-        grps[f.short_name].push({f,sourceCid});
-      });
-
-      const fxRows = subOpen ? Object.entries(grps).map(([nm,items])=>{
-        const tot=items.length;
-        const inc=items.filter(x=>PL.looseFixtures&&PL.looseFixtures[x.f.fixture_id]).length;
-        const fids=items.map(x=>x.f.fixture_id);
-        const sc=items[0].sourceCid;
-        return `<div class="pfx-row ${inc>0?'fx-loose':''}" onclick="toggleFxInCt(event,${sc},${JSON.stringify(fids)})">
-          <input type="checkbox" class="pfx-check" ${inc>0?'checked':''} onclick="event.stopPropagation();toggleFxInCt(event,${sc},${JSON.stringify(fids)})">
-          <span class="pfx-name">${nm}</span>
-          <div class="pfx-qty" onclick="event.stopPropagation()">
-            <button class="pfx-qty-btn" onclick="adjustFxQtyInCt(${sc},${JSON.stringify(fids)},-1)">&#x2212;</button>
-            <span class="pfx-qty-val">${inc}/${tot}</span>
-            <button class="pfx-qty-btn" onclick="adjustFxQtyInCt(${sc},${JSON.stringify(fids)},1)">&#x2B;</button>
+      const cids = [...tree[cat][sub]];
+      const subKey = cat+'|'+sub;
+      const subOpen = expandedPSubs.has(subKey);
+      if(sub){
+        html += `<div class="psub-block">
+          <div class="psub-header" onclick="togglePSub('${esc(cat)}','${esc(sub)}')">
+            <span class="pcat-arrow ${subOpen?'open':''}">&#x25B6;</span>
+            <span class="psub-name">${sub}</span>
+            <span class="psub-count">${cids.length} container${cids.length!==1?'s':''}</span>
+          </div>
+          <div class="pcat-body ${subOpen?'open':''}">
+            ${renderPContainerList(cids, cat)}
           </div>
         </div>`;
-      }).join('') : '';
-
-      const subLabel = sub||'(no subcategory)';
-      const subAllFids = JSON.stringify(allFids);
-      html+=`<div class="pct-block">
-        <div class="pct-row ${rowCls}" style="cursor:pointer" onclick="toggleLooseSub(event,'${esc(itemCat)}','${esc(sub)}',${subAllFids})">
-          <span class="pct-arrow ${subOpen?'open':''}" onclick="event.stopPropagation();togglePCt('${esc(subKey)}')" title="Expand">&#x25B6;</span>
-          <span class="pct-name" style="color:${incCount>0?'#5a9ad0':'#9ba3c4'}">${subLabel}</span>
-          <span class="pct-meta">${incCount}/${allFids.length}</span>
-        </div>
-        ${subOpen?`<div class="pfx-block">${fxRows}</div>`:''}
-      </div>`;
+      } else {
+        html += renderPContainerList(cids, cat);
+      }
     });
-    html+='</div></div>';
+
+    html += `</div></div>`;
   });
-  return html;
+
+  panel.innerHTML = html || '<div style="color:#555a72;font-size:12px;padding:8px">No fixtures found.</div>';
 }
 
-// ── renderPContainerList ──────────────────────────────────────
-function renderPContainerList(cids){
+function esc(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function renderPContainerList(cids, cat){
   return cids.map(cid=>{
     const c = allContainers.find(x=>x.container_id===cid);
     if(!c) return '';
-    const entry   = PL.selectedContainers[cid];
-    const ctSel   = entry && entry.containerSelected;
-    const allFxs  = fxsInCt(cid);
-    const inclFxIds = entry ? entry.fixtures.filter(f=>!f.removed).map(f=>f.fixtureId) : [];
-    const partialCt = ctSel && entry && entry.fixtures.some(f=>f.removed);
-    const looseInCt = !ctSel && Object.values(PL.looseFixtures||{}).some(lf=>lf.sourceCid===cid);
-    const rowCls    = ctSel && !partialCt ? 'ct-selected' : partialCt ? 'ct-partial' : looseInCt ? 'ct-loose' : '';
-    const ctOpen    = expandedPCts.has('CT'+cid);
-    const fxWt      = allFxs.reduce((s,f)=>s+(parseFloat(f.weight_kg)||0),0);
-    const totalWt   = (parseFloat(c.weight_kg)||0)+fxWt;
+    const entry    = PL.selectedContainers[cid];
+    const ctSel    = entry && entry.containerSelected;
+    const fxsInCt  = allFixtures.filter(f=>f.container_id===cid);
 
-    const fxGroups={};
-    allFxs.forEach(f=>{ if(!fxGroups[f.short_name]) fxGroups[f.short_name]=[]; fxGroups[f.short_name].push(f); });
+    // Count selected fixtures in this container
+    const inclFxIds = entry ? entry.fixtures.filter(f=>!f.removed).map(f=>f.fixtureId) : [];
+    const looseFxInCt = Object.values(PL.looseFixtures||{}).filter(f=>f.containerId===cid);
+
+    const anySelected = ctSel || looseFxInCt.length>0 || inclFxIds.length>0;
+    const partialCt = ctSel && entry && entry.fixtures.some(f=>f.removed);
+    const looseOnly = !ctSel && (looseFxInCt.length>0);
+    const rowCls = ctSel && !partialCt ? 'ct-selected' : partialCt ? 'ct-partial' : looseOnly ? 'ct-loose' : '';
+
+    const ctOpen = expandedPCts.has(cid);
+    const fxWt = fxsInCt.reduce((s,f)=>s+(parseFloat(f.weight_kg)||0),0);
+    const totalWt = (parseFloat(c.weight_kg)||0)+fxWt;
+
+    // Group fixtures by shortName
+    const fxGroups = {};
+    fxsInCt.forEach(f=>{
+      if(!fxGroups[f.short_name]) fxGroups[f.short_name]=[];
+      fxGroups[f.short_name].push(f);
+    });
 
     const fxRows = ctOpen ? Object.entries(fxGroups).map(([name,grp])=>{
-      const total=grp.length;
-      const fids=grp.map(f=>f.fixture_id);
+      const total = grp.length;
+      // How many of this group are currently included?
       let incCount;
       if(ctSel){
-        incCount = (entry.fixtures||[]).filter(ef=>ef.shortName===name&&!ef.removed).length;
+        const entFxs = (entry.fixtures||[]).filter(ef=>ef.shortName===name);
+        incCount = entFxs.filter(ef=>!ef.removed).length;
       } else {
-        // Check looseFixtures for individually scanned/selected items in this container
-        incCount = fids.filter(fid=>PL.looseFixtures&&PL.looseFixtures[fid]).length;
+        incCount = Object.values(PL.looseFixtures||{}).filter(lf=>lf.shortName===name&&lf.containerId===cid).length;
       }
-      const allInc=incCount===total, anyInc=incCount>0, partialFx=anyInc&&!allInc;
-      const fxRowCls=ctSel?(allInc?'fx-selected':partialFx?'fx-partial':''):(anyInc?'fx-loose':'');
-      return `<div class="pfx-row ${fxRowCls}" onclick="toggleFxInCt(event,${cid},${JSON.stringify(fids)})">
-        <input type="checkbox" class="pfx-check" ${anyInc?'checked':''} onclick="event.stopPropagation();toggleFxInCt(event,${cid},${JSON.stringify(fids)})">
+      const allInc = incCount===total;
+      const anyInc = incCount>0;
+      const partialFx = anyInc && !allInc;
+      const fxRowCls = ctSel ? (allInc?'fx-selected':partialFx?'fx-partial':'') : (anyInc?'fx-loose':'');
+      const firstFid = grp[0].fixture_id;
+      return `<div class="pfx-row ${fxRowCls}" onclick="toggleFxInCt(event,${cid},${JSON.stringify(grp.map(f=>f.fixture_id))})">
+        <input type="checkbox" class="pfx-check" ${anyInc?'checked':''} onclick="event.stopPropagation();toggleFxInCt(event,${cid},${JSON.stringify(grp.map(f=>f.fixture_id))})">
         <span class="pfx-name">${name}</span>
         <div class="pfx-qty" onclick="event.stopPropagation()">
-          <button class="pfx-qty-btn" onclick="adjustFxQtyInCt(${cid},${JSON.stringify(fids)},-1)">&#x2212;</button>
+          <button class="pfx-qty-btn" onclick="adjustFxQtyInCt(${cid},${JSON.stringify(grp.map(f=>f.fixture_id))},-1)">&#x2212;</button>
           <span class="pfx-qty-val">${incCount}/${total}</span>
-          <button class="pfx-qty-btn" onclick="adjustFxQtyInCt(${cid},${JSON.stringify(fids)},1)">&#x2B;</button>
+          <button class="pfx-qty-btn" onclick="adjustFxQtyInCt(${cid},${JSON.stringify(grp.map(f=>f.fixture_id))},1)">&#x2B;</button>
         </div>
       </div>`;
     }).join('') : '';
 
     return `<div class="pct-block">
       <div class="pct-row ${rowCls}" onclick="toggleCtSelection(event,${cid})">
-        <span class="pct-arrow ${ctOpen?'open':''}" onclick="event.stopPropagation();togglePCt('CT${cid}')" title="Expand">&#x25B6;</span>
+        <span class="pct-arrow ${ctOpen?'open':''}" onclick="event.stopPropagation();togglePCt(${cid})" title="Expand">&#x25B6;</span>
         <input type="checkbox" class="pct-check" ${ctSel?'checked':''} onclick="event.stopPropagation();toggleCtSelection(event,${cid})">
         <span class="pct-name">${c.short_name}</span>
-        <span class="pct-meta">${allFxs.length} fx · ${totalWt.toFixed(1)} kg</span>
+        <span class="pct-meta">${fxsInCt.length} fx · ${totalWt.toFixed(1)} kg</span>
       </div>
-      ${ctOpen?`<div class="pfx-block">${fxRows||'<div style="color:#555a72;font-size:11px;padding:4px 0">Empty</div>'}</div>`:''}
+      ${ctOpen?`<div class="pfx-block">${fxRows||'<div style="color:#555a72;font-size:11px;padding:4px 0">Empty container</div>'}</div>`:''}
     </div>`;
   }).join('');
 }
 
-// ── Toggle helpers ────────────────────────────────────────────
-function togglePCat(k){ expandedPCats.has(k)?expandedPCats.delete(k):expandedPCats.add(k); renderAvailableContainers(); }
-function togglePSub(k){ expandedPSubs.has(k)?expandedPSubs.delete(k):expandedPSubs.add(k); renderAvailableContainers(); }
-function togglePCt(k){  expandedPCts.has(k) ?expandedPCts.delete(k) :expandedPCts.add(k);  renderAvailableContainers(); }
+function togglePCat(cat){ expandedPCats.has(cat)?expandedPCats.delete(cat):expandedPCats.add(cat); renderAvailableContainers(); }
+function togglePSub(cat,sub){ const k=cat+'|'+sub; expandedPSubs.has(k)?expandedPSubs.delete(k):expandedPSubs.add(k); renderAvailableContainers(); }
+function togglePCt(cid){ expandedPCts.has(cid)?expandedPCts.delete(cid):expandedPCts.add(cid); renderAvailableContainers(); }
 
-function toggleLooseSub(event, itemCat, sub, allFids){
-  if(event.target.classList.contains('pct-arrow')) return;
-  initPL();
-  const incCount = allFids.filter(fid=>PL.looseFixtures[fid]).length;
-  const willInclude = incCount < allFids.length;
-  allFids.forEach(fid=>{
-    const f=allFixtures.find(x=>x.fixture_id===fid);
-    if(!f) return;
-    if(willInclude) PL.looseFixtures[fid]={fixtureId:fid,shortName:f.short_name,category:f.category,subcategory:f.subcategory||'',sourceCid:f.container_id};
-    else delete PL.looseFixtures[fid];
-  });
-  if(!PL.looseSubSel) PL.looseSubSel={};
-  PL.looseSubSel[itemCat+'|'+sub] = willInclude;
-  savePL(); renderAvailableContainers(); renderSelectedContainers(); updateLoadWeight();
-}
-
-// ── Container selection ───────────────────────────────────────
 function toggleCtSelection(event, cid){
   initPL();
   if(event.target.classList.contains('pct-arrow')) return;
-  const c   = allContainers.find(x=>x.container_id===cid);
+  const c = allContainers.find(x=>x.container_id===cid);
   if(!c) return;
   const entry = PL.selectedContainers[cid];
-  const fxs   = fxsInCt(cid);
+  const fxs   = allFixtures.filter(f=>f.container_id===cid);
+
   if(entry && entry.containerSelected){
-    delete PL.selectedContainers[cid];
-    Object.keys(PL.looseFixtures).forEach(fid=>{ if(PL.looseFixtures[fid].sourceCid===cid) delete PL.looseFixtures[fid]; });
+    // Deselect container — remove from selectedContainers, remove loose entries too
+    entry.containerSelected = false;
+    entry.fixtures = [];
+    if(!Object.values(PL.looseFixtures||{}).some(lf=>lf.containerId===cid)){
+      delete PL.selectedContainers[cid];
+    }
+    // Remove any loose fixtures for this container
+    Object.keys(PL.looseFixtures||{}).forEach(fid=>{
+      if(PL.looseFixtures[fid].containerId===cid) delete PL.looseFixtures[fid];
+    });
   } else {
-    PL.selectedContainers[cid]={containerId:cid, containerSelected:true,
-      fixtures:fxs.map(f=>({fixtureId:f.fixture_id,shortName:f.short_name,category:f.category,subcategory:f.subcategory||'',removed:false}))};
-    fxs.forEach(f=>{ if(PL.looseFixtures[f.fixture_id]) delete PL.looseFixtures[f.fixture_id]; });
+    // Select container — all fixtures included
+    PL.selectedContainers[cid] = {
+      containerId: cid, containerSelected: true,
+      fixtures: fxs.map(f=>({ fixtureId:f.fixture_id, shortName:f.short_name, category:f.category, subcategory:f.subcategory||'', removed:false }))
+    };
+    // Remove any loose entries for this container's fixtures (now covered by container)
+    fxs.forEach(f=>{ if(PL.looseFixtures&&PL.looseFixtures[f.fixture_id]) delete PL.looseFixtures[f.fixture_id]; });
   }
   savePL(); renderAvailableContainers(); renderSelectedContainers(); updateLoadWeight();
 }
 
-// ── Fixture toggle (container or loose) ──────────────────────
 function toggleFxInCt(event, cid, fids){
   initPL();
   if(event.target.classList.contains('pfx-qty-btn')) return;
   const entry = PL.selectedContainers[cid];
+  // Determine current state: how many of these fids are currently included
   const totalFids = fids.length;
-  let incCount = entry&&entry.containerSelected
-    ? entry.fixtures.filter(ef=>fids.includes(ef.fixtureId)&&!ef.removed).length
-    : fids.filter(fid=>PL.looseFixtures[fid]).length;
-  const willInclude = incCount < totalFids;
+  let incCount = 0;
+  if(entry && entry.containerSelected){
+    incCount = entry.fixtures.filter(ef=>fids.includes(ef.fixtureId)&&!ef.removed).length;
+  } else {
+    incCount = fids.filter(fid=>PL.looseFixtures&&PL.looseFixtures[fid]).length;
+  }
+  const willInclude = incCount < totalFids; // toggle: if any excluded, include all; if all included, exclude all
 
   if(entry && entry.containerSelected){
-    entry.fixtures.forEach(ef=>{ if(fids.includes(ef.fixtureId)) ef.removed=!willInclude; });
+    entry.fixtures.forEach(ef=>{
+      if(fids.includes(ef.fixtureId)) ef.removed = !willInclude;
+    });
   } else {
+    // Loose fixture logic
+    if(!PL.looseFixtures) PL.looseFixtures = {};
     fids.forEach(fid=>{
-      const f=allFixtures.find(x=>x.fixture_id===fid);
+      const f = allFixtures.find(x=>x.fixture_id===fid);
       if(!f) return;
       if(willInclude){
-        PL.looseFixtures[fid]={fixtureId:fid,shortName:f.short_name,category:f.category,subcategory:f.subcategory||'',sourceCid:cid};
-        const iCat=f.category||'Uncategorised'; const iSub=f.subcategory||'';
-        expandedPCats.add('LOOSE'); expandedPSubs.add('LCAT|'+iCat); expandedPCts.add('LSUB|'+iCat+'|'+iSub);
-        expandedSelContainers.add('LS'+iCat+'|'+iSub);
-      } else delete PL.looseFixtures[fid];
+        PL.looseFixtures[fid] = { fixtureId:fid, shortName:f.short_name, category:f.category, subcategory:f.subcategory||'', containerId:cid };
+      } else {
+        delete PL.looseFixtures[fid];
+      }
     });
   }
   savePL(); renderAvailableContainers(); renderSelectedContainers(); updateLoadWeight();
 }
 
-// ── Qty adjustment ────────────────────────────────────────────
 function adjustFxQtyInCt(cid, fids, delta){
   initPL();
   const entry = PL.selectedContainers[cid];
   if(entry && entry.containerSelected){
-    const included=entry.fixtures.filter(ef=>fids.includes(ef.fixtureId)&&!ef.removed);
-    const excluded=entry.fixtures.filter(ef=>fids.includes(ef.fixtureId)&&ef.removed);
-    if(delta>0 && excluded.length) excluded[0].removed=false;
-    if(delta<0 && included.length) included[included.length-1].removed=true;
+    const included = entry.fixtures.filter(ef=>fids.includes(ef.fixtureId)&&!ef.removed);
+    const excluded = entry.fixtures.filter(ef=>fids.includes(ef.fixtureId)&&ef.removed);
+    if(delta>0 && excluded.length){ excluded[0].removed=false; }
+    if(delta<0 && included.length){ included[included.length-1].removed=true; }
   } else {
+    if(!PL.looseFixtures) PL.looseFixtures={};
     if(delta>0){
-      const unselFid=fids.find(fid=>!PL.looseFixtures[fid]);
+      const unselFid = fids.find(fid=>!PL.looseFixtures[fid]);
       if(unselFid){
         const f=allFixtures.find(x=>x.fixture_id===unselFid);
-        if(f){
-          PL.looseFixtures[unselFid]={fixtureId:unselFid,shortName:f.short_name,category:f.category,subcategory:f.subcategory||'',sourceCid:cid};
-          // Ensure left panel tree is expanded
-          const iCat=f.category||'Uncategorised'; const iSub=f.subcategory||'';
-          expandedPCats.add('LOOSE');
-          expandedPSubs.add('LCAT|'+iCat);
-          expandedPCts.add('LSUB|'+iCat+'|'+iSub);
-          expandedSelContainers.add('LS'+iCat+'|'+iSub);
-        }
+        if(f) PL.looseFixtures[unselFid]={fixtureId:unselFid,shortName:f.short_name,category:f.category,subcategory:f.subcategory||'',containerId:cid};
       }
     } else {
-      const selFid=[...fids].reverse().find(fid=>PL.looseFixtures[fid]);
+      const selFid = [...fids].reverse().find(fid=>PL.looseFixtures[fid]);
       if(selFid) delete PL.looseFixtures[selFid];
     }
   }
   savePL(); renderAvailableContainers(); renderSelectedContainers(); updateLoadWeight();
-}
-
-// ── Shared qty adjust called from right panel / summary ───────
-function adjustQtyFromPanel(cid, fids, delta){
-  adjustFxQtyInCt(cid, fids, delta);
-  // If we're on the summary page, re-render it too
-  if(PL.step === 3) renderSummary();
 }
 
 function openCatPopup(){}
@@ -2438,152 +2302,118 @@ let expandedSelContainers = new Set();
 function renderSelectedContainers(){
   initPL();
   const panel = document.getElementById('ct-selected-list');
-  const blocks = buildSelectionBlocks();
-  // Auto-expand all blocks that aren't already tracked
-  blocks.forEach(b=>{
-    const key = b.type==='container'?'CT'+b.cid:'LS'+b.key;
-    if(!expandedSelContainers.has(key)) expandedSelContainers.add(key);
+  const hasContainers = Object.values(PL.selectedContainers).some(e=>e.containerSelected);
+  const hasLoose = Object.keys(PL.looseFixtures||{}).length > 0;
+  if(!hasContainers && !hasLoose){
+    panel.innerHTML='<div style="color:#555a72;font-size:12px;padding:8px">Nothing selected yet.</div>'; return;
+  }
+
+  // ── Helper: weight of included fixtures in entry ──────────
+  const entryWt = entry => {
+    const c = allContainers.find(x=>x.container_id===entry.containerId);
+    const tare = parseFloat(c?.weight_kg||0);
+    const fxWt = entry.fixtures.filter(f=>!f.removed).reduce((s,fx)=>{
+      const f=allFixtures.find(x=>x.fixture_id===fx.fixtureId);
+      return s+parseFloat(f?.weight_kg||0);
+    },0);
+    return tare+fxWt;
+  };
+
+  // ── Group selected containers by container category ───────
+  const ctByCat = {};
+  Object.values(PL.selectedContainers).filter(e=>e.containerSelected).forEach(entry=>{
+    const c   = allContainers.find(x=>x.container_id===entry.containerId);
+    const cat = c?.category||'Uncategorised';
+    if(!ctByCat[cat]) ctByCat[cat]=[];
+    ctByCat[cat].push(entry);
   });
-  if(!blocks.length){ panel.innerHTML='<div style="color:#555a72;font-size:12px;padding:8px">Nothing selected yet.</div>'; return; }
 
   let html='';
-  // Group real containers by container category
-  const ctByCat={};
-  blocks.filter(b=>b.type==='container').forEach(b=>{
-    const c=allContainers.find(x=>x.container_id===b.cid);
-    const cat=c?.category||'Uncategorised';
-    if(!ctByCat[cat]) ctByCat[cat]=[];
-    ctByCat[cat].push(b);
-  });
 
   Object.keys(ctByCat).sort().forEach(cat=>{
     html+=`<div style="color:#555a72;font-size:10px;letter-spacing:.5px;text-transform:uppercase;padding:8px 4px 4px">${cat}</div>`;
-    ctByCat[cat].forEach(b=>{ html+=renderSelBlock(b); });
+    ctByCat[cat].forEach(entry=>{
+      const id   = entry.containerId;
+      const c    = allContainers.find(x=>x.container_id===id);
+      const name = c?.short_name||'Container '+id;
+      const exp  = expandedSelContainers.has(id);
+      const arr  = exp?'&#x25BC;':'&#x25B6;';
+      const tot  = entryWt(entry);
+      const partial = entry.fixtures.some(f=>f.removed);
+      const bdrCol  = partial?'#7a6a00':'#2a7a3a';
+
+      let bodyHtml='';
+      if(exp){
+        const fxGrps={};
+        entry.fixtures.forEach(fx=>{ if(!fxGrps[fx.shortName]) fxGrps[fx.shortName]={inc:[],exc:[]}; if(fx.removed) fxGrps[fx.shortName].exc.push(fx); else fxGrps[fx.shortName].inc.push(fx); });
+        const fxRows=Object.entries(fxGrps).map(([nm,g])=>{
+          const i=g.inc.length, t=g.inc.length+g.exc.length;
+          const allR=i===0;
+          const mb=i>0?`<button class="qty-btn remove" onclick="removeFx(${id},${g.inc[0].fixtureId})">&#x2212;</button>`:`<button class="qty-btn remove" style="opacity:.3;pointer-events:none">&#x2212;</button>`;
+          const pb=g.exc.length?`<button class="qty-btn" onclick="incrementFx(${id},${g.exc[0].fixtureId})" style="color:#4caf50">&#x2B;</button>`:`<button class="qty-btn" style="opacity:.3;pointer-events:none">&#x2B;</button>`;
+          return `<div class="sel-fx-row"><div class="sel-fx-name ${allR?'removed':''}">${nm}</div><div class="qty-ctrl">${mb}<span class="qty-val">${i}<span style="color:#555a72;font-size:10px">/${t}</span></span>${pb}</div></div>`;
+        }).join('');
+        const originFxs=allFixtures.filter(f=>{if(f.container_id===id)return false;const ct=allContainers.find(x=>x.container_id===f.container_id);return ct&&ct.location_id===PL.originId&&ct.container_type!=='placeholder';});
+        const addOpts=originFxs.length?`<div class="add-to-ct-row" style="display:flex;gap:6px;margin-top:6px"><select id="add-fx-sel-${id}" style="flex:1;font-size:12px;padding:5px 8px"><option value="">+ Add item...</option>${originFxs.map(f=>{const ct=allContainers.find(x=>x.container_id===f.container_id);return`<option value="${f.fixture_id}">[${ct?.short_name||'?'}] ${f.short_name}</option>`;}).join('')}</select><button class="btn-ghost btn" style="padding:4px 10px;font-size:12px" onclick="addFxToContainer(${id})">Add</button></div>`:'';
+        bodyHtml=`<div class="sel-ct-body">${fxRows}${addOpts}</div>`;
+      }
+
+      html+=`<div class="sel-ct-block" style="border-left:3px solid ${bdrCol};margin-bottom:6px">
+        <div class="sel-ct-header" onclick="toggleSelContainer(${id})">
+          <span style="color:#555a72;font-size:11px">${arr}</span>
+          <span class="sel-ct-name">${name}</span>
+          <span class="sel-ct-meta">${tot.toFixed(1)} kg</span>
+          <button class="sel-ct-remove" onclick="event.stopPropagation();removeContainer(${id})">&#x2715;</button>
+        </div>${bodyHtml}</div>`;
+    });
   });
 
-  // LOOSE blocks (one per itemCat|sub)
-  blocks.filter(b=>b.type==='loose').forEach(b=>{ html+=renderSelBlock(b); });
-
+  // ── Loose fixtures grouped by category + subcategory ──────
+  if(hasLoose){
+    const looseFxs = Object.values(PL.looseFixtures||{});
+    const looseByCat={};
+    looseFxs.forEach(lf=>{
+      const cat=lf.category||'Uncategorised';
+      const sub=lf.subcategory||'';
+      const key=cat+'|||'+sub;
+      if(!looseByCat[key]) looseByCat[key]={cat,sub,items:{}};
+      if(!looseByCat[key].items[lf.shortName]) looseByCat[key].items[lf.shortName]=0;
+      looseByCat[key].items[lf.shortName]++;
+    });
+    const destLoc=allLocations.find(l=>l.location_id===PL.destId);
+    html+=`<div style="color:#555a72;font-size:10px;letter-spacing:.5px;text-transform:uppercase;padding:8px 4px 4px">Loose items</div>
+    <div class="sel-ct-block" style="border-left:3px solid #1a4a7a;margin-bottom:6px">
+      <div class="sel-ct-header" style="cursor:default">
+        <span style="color:#5a9ad0;font-size:13px;font-weight:500;flex:1">Loose → ${destLoc?.short_name||'dest.'} placeholder</span>
+      </div>
+      <div class="sel-ct-body">
+        ${Object.values(looseByCat).map(g=>`
+          <div style="color:#555a72;font-size:10px;margin:4px 0 2px">${g.cat}${g.sub?' / '+g.sub:''}</div>
+          ${Object.entries(g.items).map(([nm,qty])=>`
+            <div class="sel-fx-row"><div class="sel-fx-name" style="color:#5a9ad0">${nm}</div><div class="qty-ctrl"><span class="qty-val">${qty}</span></div></div>`).join('')}`).join('')}
+      </div>
+    </div>`;
+  }
   panel.innerHTML=html;
 }
 
-function buildSelectionBlocks(){
-  const blocks=[];
-  // Real containers
-  Object.values(PL.selectedContainers).filter(e=>e.containerSelected).forEach(entry=>{
-    const c=allContainers.find(x=>x.container_id===entry.containerId);
-    const tare=parseFloat(c?.weight_kg||0);
-    const incFxIds=entry.fixtures.filter(f=>!f.removed).map(f=>f.fixtureId);
-    const fxWt=incFxIds.reduce((s,id)=>s+fxWtById(id),0);
-    const grps={};
-    entry.fixtures.forEach(fx=>{ if(!grps[fx.shortName]) grps[fx.shortName]={inc:[],exc:[]}; if(fx.removed) grps[fx.shortName].exc.push(fx); else grps[fx.shortName].inc.push(fx); });
-    blocks.push({type:'container', cid:entry.containerId, name:c?.short_name||'Ct '+entry.containerId,
-      tare, totalWt:tare+fxWt, partial:entry.fixtures.some(f=>f.removed), grps,
-      allFxs: allFixtures.filter(f=>f.container_id===entry.containerId)});
-  });
-  // Loose blocks grouped by itemCat|sub
-  const looseByCatSub={};
-  Object.values(PL.looseFixtures||{}).forEach(lf=>{
-    const k=(lf.category||'Uncategorised')+'|'+(lf.subcategory||'');
-    if(!looseByCatSub[k]) looseByCatSub[k]={cat:lf.category||'Uncategorised',sub:lf.subcategory||'',items:[],grps:{}};
-    looseByCatSub[k].items.push(lf);
-    if(!looseByCatSub[k].grps[lf.shortName]) looseByCatSub[k].grps[lf.shortName]=[];
-    looseByCatSub[k].grps[lf.shortName].push(lf);
-  });
-  Object.entries(looseByCatSub).forEach(([k,g])=>{
-    const totalWt=g.items.reduce((s,lf)=>s+fxWtById(lf.fixtureId),0);
-    blocks.push({type:'loose', key:k, name:(g.sub||(g.cat+' (loose)')), cat:g.cat, sub:g.sub, totalWt, grps:g.grps, items:g.items});
-  });
-  return blocks;
-}
-
-function renderSelBlock(b){
-  const expanded = expandedSelContainers.has(b.type==='container'?'CT'+b.cid:'LS'+b.key);
-  const arrow = expanded?'&#x25BC;':'&#x25B6;';
-  const bdrCol = b.type==='loose'?'#1a4a7a':b.partial?'#7a6a00':'#2a7a3a';
-
-  let body='';
-  if(expanded){
-    if(b.type==='container'){
-      body = Object.entries(b.grps).map(([nm,g])=>{
-        const i=g.inc.length, t=g.inc.length+g.exc.length;
-        const fids=JSON.stringify([...g.inc,...g.exc].map(x=>x.fixtureId));
-        const sCid=b.cid;
-        const wt=fxWtById(g.inc[0]?.fixtureId||g.exc[0]?.fixtureId)||0;
-        const mb=i>0?`<button class="qty-btn remove" onclick="adjustQtyFromPanel(${sCid},${fids},-1)">&#x2212;</button>`:`<button class="qty-btn remove" style="opacity:.3;pointer-events:none">&#x2212;</button>`;
-        const pb=g.exc.length?`<button class="qty-btn" onclick="adjustQtyFromPanel(${sCid},${fids},1)" style="color:#4caf50">&#x2B;</button>`:`<button class="qty-btn" style="opacity:.3;pointer-events:none">&#x2B;</button>`;
-        return `<div class="sel-fx-row">
-          <div class="sel-fx-name ${i===0?'removed':''}">${nm}</div>
-          <div style="color:#555a72;font-size:11px;min-width:50px;text-align:right">${wt?wt.toFixed(2)+' kg':''}</div>
-          <div class="qty-ctrl">${mb}<span class="qty-val">${i}<span style="color:#555a72;font-size:10px">/${t}</span></span>${pb}</div>
-        </div>`;
-      }).join('');
-      // Add from location
-      const originFxs=allFixtures.filter(f=>{if(f.container_id===b.cid)return false;const ct=allContainers.find(x=>x.container_id===f.container_id);return ct&&ct.location_id===PL.originId&&!isPlaceholderCt(ct);});
-      if(originFxs.length) body+=`<div class="add-to-ct-row" style="display:flex;gap:6px;margin-top:6px"><select id="add-fx-sel-${b.cid}" style="flex:1;font-size:12px;padding:5px 8px"><option value="">+ Add item...</option>${originFxs.map(f=>{const ct=allContainers.find(x=>x.container_id===f.container_id);return`<option value="${f.fixture_id}">[${ct?.short_name||'?'}] ${f.short_name}</option>`;}).join('')}</select><button class="btn-ghost btn" style="padding:4px 10px;font-size:12px" onclick="addFxToContainer(${b.cid})">Add</button></div>`;
-    } else {
-      body = Object.entries(b.grps).map(([nm,lfList])=>{
-        const fids=JSON.stringify(lfList.map(lf=>lf.fixtureId));
-        const sCid=lfList[0].sourceCid;
-        const wt=fxWtById(lfList[0].fixtureId)||0;
-        // All fixtures of this name at the sourceCid container
-        const allInGroup=allFixtures.filter(f=>f.short_name===nm&&f.container_id===sCid);
-        const tot=allInGroup.length;
-        const inc=lfList.length;
-        const excludedFids=allInGroup.filter(f=>!PL.looseFixtures[f.fixture_id]).map(f=>f.fixture_id);
-        const allFids=JSON.stringify([...lfList.map(l=>l.fixtureId),...excludedFids]);
-        const mb=inc>0?`<button class="qty-btn remove" onclick="adjustQtyFromPanel(${sCid},${allFids},-1)">&#x2212;</button>`:`<button class="qty-btn remove" style="opacity:.3;pointer-events:none">&#x2212;</button>`;
-        const pb=inc<tot?`<button class="qty-btn" onclick="adjustQtyFromPanel(${sCid},${allFids},1)" style="color:#4caf50">&#x2B;</button>`:`<button class="qty-btn" style="opacity:.3;pointer-events:none">&#x2B;</button>`;
-        return `<div class="sel-fx-row">
-          <div class="sel-fx-name" style="color:#5a9ad0">${nm}</div>
-          <div style="color:#555a72;font-size:11px;min-width:50px;text-align:right">${wt?wt.toFixed(2)+' kg':''}</div>
-          <div class="qty-ctrl">${mb}<span class="qty-val">${inc}<span style="color:#555a72;font-size:10px">/${tot}</span></span>${pb}</div>
-        </div>`;
-      }).join('');
-    }
-    body=`<div class="sel-ct-body">${body}</div>`;
-  }
-
-  const toggleKey = b.type==='container'?'CT'+b.cid:'LS'+b.key;
-  const removeBtn = b.type==='container'
-    ? `<button class="sel-ct-remove" onclick="event.stopPropagation();removeContainer(${b.cid})">&#x2715;</button>`
-    : `<button class="sel-ct-remove" onclick="event.stopPropagation();removeLooseBlock('${esc(b.key)}')">&#x2715;</button>`;
-
-  return `<div class="sel-ct-block" style="border-left:3px solid ${bdrCol};margin-bottom:6px">
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;background:#13151f;border-radius:0" onclick="toggleSelBlock('${esc(toggleKey)}')">
-      <span style="color:#555a72;font-size:11px">${arrow}</span>
-      <span class="sel-ct-name" style="color:${b.type==='loose'?'#5a9ad0':'#e2e4ef'}">${b.name}</span>
-      <span class="sel-ct-meta">${b.totalWt.toFixed(1)} kg${b.tare?` (tare ${b.tare.toFixed(1)})`:''}</span>
-      ${removeBtn}
-    </div>
-    ${body}
-  </div>`;
-}
-
-function removeLooseBlock(key){
-  const [cat,sub] = key.split('|');
-  Object.keys(PL.looseFixtures||{}).forEach(fid=>{
-    const lf=PL.looseFixtures[fid];
-    if((lf.category||'Uncategorised')===cat && (lf.subcategory||'')===sub) delete PL.looseFixtures[fid];
-  });
-  if(PL.looseSubSel) delete PL.looseSubSel[key];
-  savePL(); renderAvailableContainers(); renderSelectedContainers(); updateLoadWeight();
-}
-
-function toggleSelBlock(key){
-  if(expandedSelContainers.has(key)) expandedSelContainers.delete(key);
-  else expandedSelContainers.add(key);
+function toggleSelContainer(id){
+  if(expandedSelContainers.has(id)) expandedSelContainers.delete(id);
+  else expandedSelContainers.add(id);
   renderSelectedContainers();
 }
-function toggleSelContainer(id){ toggleSelBlock("CT"+id); }
 
 function removeContainer(id){
   delete PL.selectedContainers[id];
+  // Also remove any loose fixtures from this container
   Object.keys(PL.looseFixtures||{}).forEach(fid=>{
-    if(PL.looseFixtures[fid].sourceCid===id) delete PL.looseFixtures[fid];
+    if(PL.looseFixtures[fid].containerId===id) delete PL.looseFixtures[fid];
   });
-  expandedSelContainers.delete('CT'+id);
-  savePL(); renderAvailableContainers(); renderSelectedContainers(); updateLoadWeight();
+  expandedSelContainers.delete(id);
+  savePL();
+  renderAvailableContainers();
+  renderSelectedContainers();
+  updateLoadWeight();
 }
 
 function incrementFx(cid, fid){
@@ -2642,7 +2472,10 @@ function updateLoadWeight(){
       if(f) total += parseFloat(f.weight_kg)||0;
     });
   });
-  Object.values(PL.looseFixtures||{}).forEach(lf=>{ total+=fxWtById(lf.fixtureId); });
+  Object.values(PL.looseFixtures||{}).forEach(lf=>{
+    const f = allFixtures.find(x=>x.fixture_id===lf.fixtureId);
+    if(f) total += parseFloat(f.weight_kg)||0;
+  });
   document.getElementById('load-weight-label').textContent = total.toFixed(1)+' kg total';
 }
 
@@ -2655,66 +2488,73 @@ function renderSummary(){
   const destType = (dest?.type||'').toLowerCase();
   const finalStatus = destType.includes('warehouse') ? 'in storage' : 'in transit';
 
-  const blocks = buildSelectionBlocks();
-  let totalWt=0, ctCount=0;
-  blocks.forEach(b=>{ totalWt+=b.totalWt||0; if(b.type==='container') ctCount++; });
+  // Helper: get fixture weight from allFixtures (not from PL)
+  const fxWtById = id => parseFloat(allFixtures.find(f=>f.fixture_id===id)?.weight_kg||0);
 
-  // Group containers by category for summary
+  let totalWt=0, totalVol=0, ctCount=0;
+
+  // Group containers by category
   const ctByCat={};
-  blocks.filter(b=>b.type==='container').forEach(b=>{
-    const c=allContainers.find(x=>x.container_id===b.cid);
+  Object.values(PL.selectedContainers).filter(e=>e.containerSelected).forEach(entry=>{
+    const c=allContainers.find(x=>x.container_id===entry.containerId);
     const cat=c?.category||'Uncategorised';
     if(!ctByCat[cat]) ctByCat[cat]=[];
-    ctByCat[cat].push(b);
+    ctByCat[cat].push({entry,c});
+    ctCount++;
   });
 
-  const renderSumBlock=(b, showCat=false)=>{
-    const bdrCol=b.type==='loose'?'#1a4a7a':b.partial?'#7a6a00':'#2a7a3a';
-    const grpEntries = b.type==='container'
-      ? Object.entries(b.grps).map(([nm,g])=>{
-          const i=g.inc.length, t=g.inc.length+g.exc.length;
-          const sCid=b.cid;
-          const allFids=JSON.stringify([...g.inc,...g.exc].map(x=>x.fixtureId));
-          const wt=fxWtById(g.inc[0]?.fixtureId||g.exc[0]?.fixtureId||0)||0;
-          const mb=i>0?`<button class="qty-btn remove" style="width:18px;height:18px;font-size:12px" onclick="adjustQtyFromPanel(${sCid},${allFids},-1)">&#x2212;</button>`:`<button class="qty-btn remove" style="width:18px;height:18px;opacity:.3;pointer-events:none">&#x2212;</button>`;
-          const pb=g.exc.length?`<button class="qty-btn" style="width:18px;height:18px;font-size:12px;color:#4caf50" onclick="adjustQtyFromPanel(${sCid},${allFids},1)">&#x2B;</button>`:`<button class="qty-btn" style="width:18px;height:18px;opacity:.3;pointer-events:none">&#x2B;</button>`;
-          return `<div class="sum-fx-row ${i===0?'removed':''}">
-            <span>${nm}</span>
-            <span style="color:#555a72;font-size:11px">${wt?wt.toFixed(2)+' kg':''}</span>
-            <div class="qty-ctrl" style="gap:3px">${mb}<span class="qty-val" style="min-width:32px;font-size:12px">${i}/${t}</span>${pb}</div>
-          </div>`;
-        })
-      : Object.entries(b.grps).map(([nm,lfList])=>{
-          const sCid=lfList[0].sourceCid;
-          const tot=allFixtures.filter(f=>f.short_name===nm&&f.container_id===sCid).length;
-          const inc=lfList.length;
-          const excludedFids=allFixtures.filter(f=>f.short_name===nm&&f.container_id===sCid&&!PL.looseFixtures[f.fixture_id]).map(f=>f.fixture_id);
-          const allFids=JSON.stringify([...lfList.map(l=>l.fixtureId),...excludedFids]);
-          const wt=fxWtById(lfList[0].fixtureId)||0;
-          const mb=inc>0?`<button class="qty-btn remove" style="width:18px;height:18px;font-size:12px" onclick="adjustQtyFromPanel(${sCid},${allFids},-1)">&#x2212;</button>`:`<button class="qty-btn remove" style="width:18px;height:18px;opacity:.3;pointer-events:none">&#x2212;</button>`;
-          const pb=inc<tot?`<button class="qty-btn" style="width:18px;height:18px;font-size:12px;color:#4caf50" onclick="adjustQtyFromPanel(${sCid},${allFids},1)">&#x2B;</button>`:`<button class="qty-btn" style="width:18px;height:18px;opacity:.3;pointer-events:none">&#x2B;</button>`;
-          return `<div class="sum-fx-row">
-            <span style="color:#5a9ad0">${nm}</span>
-            <span style="color:#555a72;font-size:11px">${wt?wt.toFixed(2)+' kg':''}</span>
-            <div class="qty-ctrl" style="gap:3px">${mb}<span class="qty-val" style="min-width:32px;font-size:12px">${inc}/${tot}</span>${pb}</div>
-          </div>`;
-        });
-    return `<div class="sum-ct-block">
-      <div class="sum-ct-hdr" style="border-left:3px solid ${bdrCol}">
-        <span style="color:#e2e4ef;font-weight:500">${b.name}${b.type==='loose'?' (loose)':''}</span>
-        <span>${b.totalWt.toFixed(1)} kg${b.tare?' / tare '+b.tare.toFixed(1)+' kg':''}</span>
-      </div>
-      ${grpEntries.join('')}
+  const ctBlocks = Object.keys(ctByCat).sort().map(cat=>{
+    const catHdr=`<div class="summary-label" style="margin-top:10px;margin-bottom:6px">${cat}</div>`;
+    const rows=ctByCat[cat].map(({entry,c})=>{
+      const tare=parseFloat(c?.weight_kg||0);
+      const incFxIds=entry.fixtures.filter(f=>!f.removed).map(f=>f.fixtureId);
+      const fxWt=incFxIds.reduce((s,id)=>s+fxWtById(id),0);
+      const ctWt=tare+fxWt;
+      const vol=c?.width_cm&&c?.depth_cm&&c?.height_cm?(c.width_cm*c.depth_cm*c.height_cm/1000000):0;
+      totalWt+=ctWt; totalVol+=vol;
+
+      // Group included fixtures by short_name
+      const fxGrps={};
+      entry.fixtures.filter(f=>!f.removed).forEach(fx=>{
+        const nm=fx.shortName; if(!fxGrps[nm]) fxGrps[nm]=0; fxGrps[nm]++;
+      });
+      const excGrps={};
+      entry.fixtures.filter(f=>f.removed).forEach(fx=>{ const nm=fx.shortName; if(!excGrps[nm]) excGrps[nm]=0; excGrps[nm]++; });
+
+      const fxRows=Object.entries(fxGrps).map(([nm,qty])=>`<div class="sum-fx-row"><span>${nm}</span><span>×${qty}</span></div>`).join('');
+      const excRows=Object.entries(excGrps).map(([nm,qty])=>`<div class="sum-fx-row removed"><span>${nm}</span><span style="color:#555a72">×${qty} (excluded)</span></div>`).join('');
+
+      return `<div class="sum-ct-block">
+        <div class="sum-ct-hdr">
+          <span style="color:#e2e4ef;font-weight:500">${c?.short_name||entry.containerId}</span>
+          <span>${ctWt.toFixed(1)} kg${vol?' · '+(vol*1000).toFixed(0)+' L':''}</span>
+        </div>${fxRows}${excRows}
+      </div>`;
+    }).join('');
+    return catHdr+rows;
+  }).join('');
+
+  // Loose fixtures grouped by category + subcategory
+  const looseFxs=Object.values(PL.looseFixtures||{});
+  let looseBlock='';
+  if(looseFxs.length){
+    const looseByCat={};
+    looseFxs.forEach(lf=>{
+      const k=(lf.category||'Uncategorised')+'|||'+(lf.subcategory||'');
+      if(!looseByCat[k]) looseByCat[k]={cat:lf.category||'Uncategorised',sub:lf.subcategory||'',items:{}};
+      if(!looseByCat[k].items[lf.shortName]) looseByCat[k].items[lf.shortName]=0;
+      looseByCat[k].items[lf.shortName]++;
+      totalWt+=fxWtById(lf.fixtureId);
+    });
+    const looseRows=Object.values(looseByCat).map(g=>`
+      <div style="font-size:11px;color:#555a72;margin:4px 0 2px">${g.cat}${g.sub?' / '+g.sub:''}</div>
+      ${Object.entries(g.items).map(([nm,qty])=>`<div class="sum-fx-row" style="color:#5a9ad0"><span>${nm}</span><span>×${qty}</span></div>`).join('')}`).join('');
+    const destLoc=allLocations.find(l=>l.location_id===PL.destId);
+    looseBlock=`<div class="summary-section">
+      <div class="summary-label">Loose items → ${destLoc?.short_name||'destination'} placeholder</div>
+      ${looseRows}
     </div>`;
-  };
-
-  const ctBlocksHtml = Object.keys(ctByCat).sort().map(cat=>`
-    <div class="summary-label" style="margin-top:10px;margin-bottom:4px">${cat}</div>
-    ${ctByCat[cat].map(b=>renderSumBlock(b)).join('')}`).join('');
-
-  const looseBlocksHtml = blocks.filter(b=>b.type==='loose').map(b=>`
-    <div class="summary-label" style="margin-top:10px;margin-bottom:4px;color:#5a9ad0">${b.cat}${b.sub?' / '+b.sub:''} — loose</div>
-    ${renderSumBlock(b)}`).join('');
+  }
 
   body.innerHTML=`
     <div class="summary-section">
@@ -2725,20 +2565,21 @@ function renderSummary(){
         <div class="summary-stat"><div class="summary-stat-val">${event?.short_name||'—'}</div><div class="summary-stat-lbl">Event</div></div>
       </div>
       ${event?.start_date?`<div style="color:#555a72;font-size:12px;margin-top:6px">Event: ${new Date(event.start_date).toLocaleDateString()} → ${event.end_date?new Date(event.end_date).toLocaleDateString():'?'}</div>`:''}
-      <div style="margin-top:8px;font-size:12px">Items → <span class="badge ${finalStatus==='in storage'?'badge-storage':'badge-transit'}">${finalStatus}</span></div>
+      <div style="margin-top:8px;font-size:12px">Items will be set to <span class="badge ${finalStatus==='in storage'?'badge-storage':'badge-transit'}">${finalStatus}</span> on pack.</div>
     </div>
     <div class="summary-section">
-      <div class="summary-label">Totals</div>
+      <div class="summary-label">Load totals</div>
       <div class="summary-grid">
         <div class="summary-stat"><div class="summary-stat-val">${ctCount}</div><div class="summary-stat-lbl">Containers</div></div>
         <div class="summary-stat"><div class="summary-stat-val">${totalWt.toFixed(1)} kg</div><div class="summary-stat-lbl">Total weight</div></div>
-        <div class="summary-stat"><div class="summary-stat-val">${blocks.length-ctCount}</div><div class="summary-stat-lbl">Loose groups</div></div>
+        <div class="summary-stat"><div class="summary-stat-val">${(totalVol*1000).toFixed(0)} L</div><div class="summary-stat-lbl">Total volume</div></div>
       </div>
     </div>
     <div class="summary-section">
-      <div class="summary-label">Contents</div>
-      ${ctBlocksHtml}${looseBlocksHtml}
-    </div>`;
+      <div class="summary-label">Containers &amp; contents</div>
+      ${ctBlocks||'<div style="color:#555a72;font-size:12px">No containers selected.</div>'}
+    </div>
+    ${looseBlock}`;
 }
 
 // ── Pack the load ─────────────────────────────────────────────
@@ -2748,7 +2589,6 @@ async function confirmPack(){
   btn.disabled = true; btn.textContent = 'Packing...';
 
   try{
-    initPL();
     const containerIds = Object.values(PL.selectedContainers).filter(e=>e.containerSelected).map(e=>e.containerId);
     const deselectedFixtureIds = [];
     Object.values(PL.selectedContainers).forEach(entry=>{
@@ -2785,8 +2625,7 @@ async function confirmPack(){
         if(looseStatusId)   upd.status_id    = looseStatusId;
         if(Object.keys(upd).length){
           const fx = allFixtures.find(f=>f.fixture_id===fid);
-          // Remove non-DB fields before PUT
-          if(fx){ const body={short_name:fx.short_name,category:fx.category,subcategory:fx.subcategory,manufacturer:fx.manufacturer,model:fx.model,weight_kg:fx.weight_kg,power_w:fx.power_w,note:fx.note,...upd}; await api('PUT','/fixtures/'+fid, body); }
+          if(fx) await api('PUT','/fixtures/'+fid, Object.assign({}, fx, upd));
         }
       }
     }
@@ -2810,52 +2649,67 @@ async function confirmPack(){
 
 // ── Print ─────────────────────────────────────────────────────
 function printLoadSummary(){
-  const origin=allLocations.find(l=>l.location_id===PL.originId);
-  const dest=allLocations.find(l=>l.location_id===PL.destId);
-  const event=allEvents.find(ev=>ev.event_id===PL.eventId);
-  const blocks=buildSelectionBlocks();
+  const origin = allLocations.find(l=>l.location_id===PL.originId);
+  const dest   = allLocations.find(l=>l.location_id===PL.destId);
+  const event  = allEvents.find(ev=>ev.event_id===PL.eventId);
+  const fxWtById = id => parseFloat(allFixtures.find(f=>f.fixture_id===id)?.weight_kg||0);
 
-  let totalWt=0;
-  blocks.forEach(b=>totalWt+=b.totalWt||0);
+  let totalWt=0, ctCount=0;
 
+  // Group by container category
   const ctByCat={};
-  blocks.filter(b=>b.type==='container').forEach(b=>{
-    const c=allContainers.find(x=>x.container_id===b.cid);
+  Object.values(PL.selectedContainers).filter(e=>e.containerSelected).forEach(entry=>{
+    const c=allContainers.find(x=>x.container_id===entry.containerId);
     const cat=c?.category||'Uncategorised';
     if(!ctByCat[cat]) ctByCat[cat]=[];
-    ctByCat[cat].push(b);
+    ctByCat[cat].push({entry,c}); ctCount++;
   });
 
   let ctHtml='';
   Object.keys(ctByCat).sort().forEach(cat=>{
-    ctHtml+=`<tr><td colspan="3" style="background:#e8e8e8;font-weight:bold;padding:4px 8px">${cat}</td></tr>`;
-    ctByCat[cat].forEach(b=>{
-      ctHtml+=`<tr><td colspan="3" style="font-weight:bold;padding:3px 8px">${b.name} — tare ${b.tare.toFixed(1)} kg / total ${b.totalWt.toFixed(1)} kg</td></tr>`;
-      Object.entries(b.grps).forEach(([nm,g])=>{
-        const i=g.inc.length, t=g.inc.length+g.exc.length;
-        const wt=fxWtById(g.inc[0]?.fixtureId||g.exc[0]?.fixtureId||0)||0;
-        ctHtml+=`<tr><td style="padding:2px 8px 2px 20px">${nm}</td><td>${wt?wt.toFixed(2)+' kg':''}</td><td>${i}/${t}</td></tr>`;
-      });
+    ctHtml+=`<tr><td colspan="3" style="background:#eee;font-weight:bold;padding:4px 8px">${cat}</td></tr>`;
+    ctByCat[cat].forEach(({entry,c})=>{
+      const tare=parseFloat(c?.weight_kg||0);
+      const incIds=entry.fixtures.filter(f=>!f.removed).map(f=>f.fixtureId);
+      const fxWt=incIds.reduce((s,id)=>s+fxWtById(id),0);
+      const ctWt=tare+fxWt; totalWt+=ctWt;
+      ctHtml+=`<tr><td colspan="3" style="font-weight:bold;padding:3px 8px">${c?.short_name||entry.containerId} — ${ctWt.toFixed(1)} kg</td></tr>`;
+      // Group by short_name
+      const grps={};
+      entry.fixtures.filter(f=>!f.removed).forEach(fx=>{ if(!grps[fx.shortName]) grps[fx.shortName]=0; grps[fx.shortName]++; });
+      Object.entries(grps).forEach(([nm,qty])=>{ ctHtml+=`<tr><td style="padding:2px 8px 2px 20px"></td><td>${nm}</td><td>${qty}</td></tr>`; });
     });
   });
 
+  // Loose items
+  const looseFxs=Object.values(PL.looseFixtures||{});
   let looseHtml='';
-  blocks.filter(b=>b.type==='loose').forEach(b=>{
-    looseHtml+=`<tr><td colspan="3" style="background:#e8f0f8;font-weight:bold;padding:3px 8px">${b.cat}${b.sub?' / '+b.sub:''} (loose) — ${b.totalWt.toFixed(1)} kg</td></tr>`;
-    Object.entries(b.grps).forEach(([nm,lfList])=>{
-      const wt=fxWtById(lfList[0].fixtureId)||0;
-      looseHtml+=`<tr><td style="padding:2px 8px 2px 20px">${nm}</td><td>${wt?wt.toFixed(2)+' kg':''}</td><td>${lfList.length}</td></tr>`;
+  if(looseFxs.length){
+    const looseByCat={};
+    looseFxs.forEach(lf=>{
+      totalWt+=fxWtById(lf.fixtureId);
+      const k=(lf.category||'Uncategorised')+'|||'+(lf.subcategory||'');
+      if(!looseByCat[k]) looseByCat[k]={cat:lf.category||'Uncategorised',sub:lf.subcategory||'',items:{}};
+      if(!looseByCat[k].items[lf.shortName]) looseByCat[k].items[lf.shortName]=0;
+      looseByCat[k].items[lf.shortName]++;
     });
-  });
+    looseHtml=`<h2>Loose items (→ ${dest?.short_name||'destination'} placeholder)</h2><table><thead><tr><th>Category</th><th>Item</th><th>Qty</th></tr></thead><tbody>`;
+    Object.values(looseByCat).forEach(g=>{
+      looseHtml+=`<tr><td style="color:#555">${g.cat}${g.sub?' / '+g.sub:''}</td><td></td><td></td></tr>`;
+      Object.entries(g.items).forEach(([nm,qty])=>{ looseHtml+=`<tr><td></td><td>${nm}</td><td>${qty}</td></tr>`; });
+    });
+    looseHtml+='</tbody></table>';
+  }
 
-  document.getElementById('print-area').innerHTML=`
+  document.getElementById('print-area').innerHTML = `
     <h1>Load manifest</h1>
     <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-    <p><strong>From:</strong> ${origin?.name||'?'} &nbsp; <strong>To:</strong> ${dest?.name||'?'}</p>
+    <p><strong>From:</strong> ${origin?.name||'?'} &nbsp;&nbsp; <strong>To:</strong> ${dest?.name||'?'}</p>
     ${event?`<p><strong>Event:</strong> ${event.short_name}${event.start_date?' ('+new Date(event.start_date).toLocaleDateString()+')':''}</p>`:''}
-    <h2>Contents</h2>
-    <table><thead><tr><th>Item</th><th>Unit wt</th><th>Qty</th></tr></thead><tbody>${ctHtml}${looseHtml}</tbody></table>
-    <div class="totals">Total: ${totalWt.toFixed(2)} kg &nbsp;|&nbsp; Containers: ${blocks.filter(b=>b.type==='container').length}</div>`;
+    <h2>Containers</h2>
+    <table><thead><tr><th>Container</th><th>Item</th><th>Qty</th></tr></thead><tbody>${ctHtml}</tbody></table>
+    ${looseHtml}
+    <div class="totals">Total weight: ${totalWt.toFixed(2)} kg &nbsp;|&nbsp; Containers: ${ctCount}</div>`;
   window.print();
 }
 
@@ -2867,315 +2721,252 @@ document.querySelectorAll('.modal-bg').forEach(bg=>{
 // ── Inline row editing ────────────────────────────────────────
 // Generic: click a data row → cells become inputs → blur/Enter saves → Escape cancels
 
-// ════════════════════════════════════════════════════════════════
-// SHIFT-CLICK / SHIFT-DRAG CELL EDITOR
-// ════════════════════════════════════════════════════════════════
-// Single shift+click  → activate input in that cell immediately
-// Shift+mousedown + drag down column → select range, release → input in first cell, Enter applies to all
-// Works on: fx-tbody (fixture groups), fx-detail-tbody (individual fixtures),
-//           ct-tbody, loc-tbody, con-tbody
-
-let _shiftDrag = null;   // { tbody, entityType, colIndex, cells:[], startRow }
-let _editingCell = null; // { td, row, entityType, input }
-
-// ── Attach shift-click/drag to a tbody ───────────────────────
 function makeInlineEditable(tbodyId, entityType){
   const tbody = document.getElementById(tbodyId);
   if(!tbody) return;
-
-  tbody.addEventListener('mousedown', e=>{
-    if(!e.shiftKey) return;
+  tbody.addEventListener('dblclick', async e=>{
+    if(e.target.closest('button')) return;
     const td = e.target.closest('td[data-field]');
     if(!td) return;
     const row = td.closest('tr[data-id]');
-    if(!row) return;
-    e.preventDefault();
-
-    // Find column index within this row's data-field cells
-    const allTds = [...row.querySelectorAll('td[data-field]')];
-    const colIdx = allTds.indexOf(td);
-    if(colIdx === -1) return;
-
-    document.body.classList.add('shift-mode');
-    td.classList.add('shift-selected');
-
-    _shiftDrag = { tbody, entityType, colIdx, cells:[{td, row}], startRow: row };
+    if(!row || row.dataset.editing) return;
+    activateInlineEdit(row, entityType, td);
   });
-
-  tbody.addEventListener('mouseover', e=>{
-    if(!_shiftDrag || _shiftDrag.tbody !== tbody) return;
-    const td = e.target.closest('td[data-field]');
-    if(!td) return;
-    const row = td.closest('tr[data-id]');
-    if(!row) return;
-
-    // Must be same column index
-    const allTds = [...row.querySelectorAll('td[data-field]')];
-    if(allTds.indexOf(td) !== _shiftDrag.colIdx) return;
-
-    // Add to selection if not already there
-    const already = _shiftDrag.cells.find(x=>x.row===row);
-    if(!already){
-      _shiftDrag.cells.push({td, row});
-      td.classList.add('shift-selected');
-    }
-  });
-
-  document.addEventListener('mouseup', async e=>{
-    if(!_shiftDrag) return;
-    document.body.classList.remove('shift-mode');
-    const drag = _shiftDrag;
-    _shiftDrag = null;
-
-    const {cells, entityType} = drag;
-    cells.forEach(x=>x.td.classList.remove('shift-selected'));
-
-    if(cells.length === 1){
-      // Single cell — activate immediately
-      activateCellEdit(cells[0].td, cells[0].row, entityType);
-    } else {
-      // Multi-cell drag — activate first cell, on commit apply to all remaining rows
-      activateCellEdit(cells[0].td, cells[0].row, entityType, async (value, field, type)=>{
-        for(const {td, row} of cells.slice(1)){
-          const id  = parseInt(row.dataset.id);
-          const fld = td.dataset.field;
-          const typ = td.dataset.type||'text';
-          let val = value===''||value==='—' ? null : value;
-          if(typ==='number' && val!==null) val=parseFloat(val)||null;
-          if(typ==='int'    && val!==null) val=parseInt(val)||null;
-          await saveFieldValue(entityType, id, fld, typ, val);
-        }
-        // Single reload + popup refresh after ALL rows saved
-        await reloadEntityData(entityType);
-        refreshDetailPopupIfOpen(entityType);
-      });
-    }
-  }, { capture: false });
 }
 
-// ── Activate a single cell for editing ───────────────────────
-function activateCellEdit(td, row, entityType, onCommit){
-  // Cancel any existing cell edit
-  if(_editingCell) commitCellEdit(_editingCell);
-
-  const field = td.dataset.field;
-  const type  = td.dataset.type||'text';
-  const val   = td.dataset.val !== undefined ? td.dataset.val : td.textContent.trim();
-
-  td.classList.add('shift-editing');
-  td.dataset.orig = val;
-
-  let input;
-
-  if(type==='select'){
-    const opts = JSON.parse(td.dataset.opts||'[]');
-    input = document.createElement('select');
-    input.className = 'edit-select';
-    opts.forEach(o=>{
-      const opt = document.createElement('option');
-      opt.value=o.v; opt.textContent=o.l;
-      if(String(o.v)===String(val)) opt.selected=true;
-      input.appendChild(opt);
-    });
-    td.innerHTML=''; td.appendChild(input);
-    input.focus();
-    // Select fields commit on change
-    input.addEventListener('change', ()=>commitCellEdit({td,row,entityType,input,onCommit}));
-
-  } else if(type==='number'||type==='int'){
-    input = document.createElement('input');
-    input.type='number'; input.className='edit-input';
-    input.value = val==='—'?'':val;
-    input.step = type==='int'?'1':'0.01';
-    td.innerHTML=''; td.appendChild(input);
-    input.focus(); input.select();
-
-  } else {
-    // Text with combobox
-    const wrap = document.createElement('div');
-    wrap.className='combo-wrap'; wrap.style.cssText='position:relative;width:100%';
-    input = document.createElement('input');
-    input.type='text'; input.className='edit-input';
-    input.value = val==='—'?'':val;
-    input.autocomplete='off';
-    wrap.appendChild(input);
-    td.innerHTML=''; td.appendChild(wrap);
-    input.focus(); input.select();
-
-    // Build combo
-    const opts = inlineOpts(field, entityType, row);
-    if(opts.length){
-      let onPick = null;
-      if(field==='model'){
-        onPick = mdl=>{
-          const mfrTd=row.querySelector('td[data-field="manufacturer"]');
-          const mfr=mfrTd?(mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value:'';
-          const p=getParamsForModel(mdl,mfr);
-          if(p){
-            const wtTd=row.querySelector('td[data-field="weight_kg"]');
-            const pwTd=row.querySelector('td[data-field="power_w"]');
-            if(wtTd&&p.weight_kg!=null){const i=wtTd.querySelector('input');if(i)i.value=p.weight_kg;}
-            if(pwTd&&p.power_w!=null){ const i=pwTd.querySelector('input');if(i)i.value=p.power_w; }
-          }
-        };
-      }
-      buildInlineCombo(input, opts, onPick);
+// Returns suggestion list for a given field + entityType
+function inlineOpts(field, entityType, row){
+  if(entityType==='fixture'){
+    if(field==='category')    return getUnique('category');
+    if(field==='subcategory'){
+      const catTd = row.querySelector('td[data-field="category"]');
+      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
+      return getSubcatsForCat(cat);
+    }
+    if(field==='manufacturer'){
+      const catTd = row.querySelector('td[data-field="category"]');
+      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
+      return getMfrsForCat(cat);
+    }
+    if(field==='model'){
+      const mfrTd = row.querySelector('td[data-field="manufacturer"]');
+      const catTd = row.querySelector('td[data-field="category"]');
+      const mfr = mfrTd ? (mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value : '';
+      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
+      return getModelsForMfr(mfr, cat);
     }
   }
-
-  _editingCell = {td, row, entityType, input, onCommit};
-
-  // Enter = commit, Escape = cancel
-  input.addEventListener('keydown', async kev=>{
-    if(kev.key==='Enter'){ kev.preventDefault(); await commitCellEdit(_editingCell); }
-    if(kev.key==='Escape'){ cancelCellEdit(_editingCell); }
-  });
-
+  if(entityType==='container'){
+    if(field==='category')       return [...new Set(allContainers.map(c=>c.category).filter(Boolean))].sort();
+    if(field==='container_type') return [...new Set(allContainers.map(c=>c.container_type).filter(Boolean))].sort();
+    if(field==='short_name')     return [];
+  }
+  if(entityType==='location'){
+    if(field==='type') return [...new Set(allLocations.map(l=>l.type).filter(Boolean))].sort();
+    if(field==='city') return [...new Set(allLocations.map(l=>l.city).filter(Boolean))].sort();
+  }
+  if(entityType==='contact'){
+    if(field==='company') return [...new Set(allContacts.map(c=>c.company).filter(Boolean))].sort();
+  }
+  return [];
 }
 
-// ── Global click-outside: commit any open cell when clicking outside its table ──
-document.addEventListener('mousedown', async ev=>{
-  if(!_editingCell) return;
-  const {td} = _editingCell;
-  // Allow clicks inside the cell or a combo dropdown
-  if(td.contains(ev.target) || ev.target.closest('.combo-drop')) return;
-  // Allow clicks inside the same table (switching cells commits via activateCellEdit)
-  const table = td.closest('table');
-  if(table && table.contains(ev.target)) return;
-  await commitCellEdit(_editingCell);
-});
+function buildInlineCombo(inp, options, onPick){
+  let drop = inp.parentElement.querySelector('.combo-drop');
+  if(drop) drop.remove();
+  drop = document.createElement('div');
+  drop.className = 'combo-drop';
+  inp.parentElement.appendChild(drop);
 
-// ── Commit a cell edit ────────────────────────────────────────
-async function commitCellEdit(cell){
-  if(!cell) return;
-  if(_editingCell===cell) _editingCell=null;
-  const {td, row, entityType, input, onCommit} = cell;
-  td.classList.remove('shift-editing');
+  function render(q){
+    const filtered = options.filter(o=>!q||o.toLowerCase().includes(q.toLowerCase()));
+    const showNew  = q && !options.some(o=>o.toLowerCase()===q.toLowerCase());
+    drop.innerHTML =
+      filtered.map(o=>`<div class="combo-opt" data-val="${o}">${o}</div>`).join('') +
+      (showNew ? `<div class="combo-opt new-opt" data-val="${q}">+ Add "${q}"</div>` : '');
+    drop.querySelectorAll('.combo-opt').forEach(el=>{
+      el.addEventListener('mousedown', e=>{
+        e.preventDefault();
+        inp.value = el.dataset.val;
+        drop.style.display='none';
+        if(onPick) onPick(el.dataset.val);
+      });
+    });
+    drop.style.display = filtered.length||showNew ? 'block' : 'none';
+  }
 
-  const field = td.dataset.field;
-  const type  = td.dataset.type||'text';
-  let val = input ? input.value.trim() : td.dataset.orig;
-  if(val===''||val==='—') val=null;
-  let numVal = val;
-  if(type==='number'&&val!==null) numVal=parseFloat(val)||null;
-  if(type==='int'   &&val!==null) numVal=parseInt(val)||null;
+  inp.addEventListener('input', ()=>render(inp.value));
+  inp.addEventListener('focus', ()=>render(inp.value));
+  inp.addEventListener('blur',  ()=>setTimeout(()=>{ drop.style.display='none'; }, 150));
+  render('');
+}
+
+function activateInlineEdit(row, entityType, focusTd){
+  if(editingRow && editingRow !== row) cancelInlineEdit(editingRow);
+  row.dataset.editing = '1';
+  editingRow = row;
+  row.classList.add('editable-row');
+
+  const cells = row.querySelectorAll('td[data-field]');
+  let firstInput = null;
+
+  cells.forEach(td=>{
+    const field = td.dataset.field;
+    const val   = td.dataset.val !== undefined ? td.dataset.val : td.textContent.trim();
+    const type  = td.dataset.type||'text';
+    td.dataset.orig = val;
+    td.classList.add('editable-cell');
+
+    if(type==='select'){
+      const opts = JSON.parse(td.dataset.opts||'[]');
+      const sel = document.createElement('select');
+      sel.className = 'edit-select';
+      opts.forEach(o=>{
+        const opt = document.createElement('option');
+        opt.value = o.v; opt.textContent = o.l;
+        if(String(o.v)===String(val)) opt.selected=true;
+        sel.appendChild(opt);
+      });
+      td.innerHTML=''; td.appendChild(sel);
+      if(td===focusTd) sel.focus();
+
+    } else if(type==='number' || type==='int'){
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 'edit-input';
+      inp.value = val==='—'?'':val;
+      inp.step = type==='int' ? '1' : '0.01';
+      td.innerHTML=''; td.appendChild(inp);
+      if(!firstInput) firstInput = inp;
+      if(td===focusTd){ inp.focus(); inp.select(); }
+
+    } else {
+      // text with inline combobox
+      const wrap = document.createElement('div');
+      wrap.className = 'combo-wrap';
+      wrap.style.cssText = 'position:relative;width:100%';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'edit-input';
+      inp.value = val==='—'?'':val;
+      inp.autocomplete = 'off';
+      wrap.appendChild(inp);
+      td.innerHTML=''; td.appendChild(wrap);
+
+      if(!firstInput) firstInput = inp;
+      if(td===focusTd){
+        inp.focus(); inp.select();
+        // only build combo on the cell that was double-clicked
+        const opts = inlineOpts(field, entityType, row);
+        if(opts.length){
+          let onPick = null;
+          if(field==='model'){
+            onPick = (mdl)=>{
+              const mfrTd = row.querySelector('td[data-field="manufacturer"]');
+              const mfr = mfrTd?(mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value:'';
+              const p = getParamsForModel(mdl, mfr);
+              if(p){
+                const wtTd = row.querySelector('td[data-field="weight_kg"]');
+                const pwTd = row.querySelector('td[data-field="power_w"]');
+                if(wtTd && p.weight_kg!=null){ const i=wtTd.querySelector('input'); if(i) i.value=p.weight_kg; }
+                if(pwTd && p.power_w!=null){  const i=pwTd.querySelector('input'); if(i) i.value=p.power_w; }
+              }
+            };
+          }
+          buildInlineCombo(inp, opts, onPick);
+        }
+      }
+    }
+  });
+
+  if(focusTd && !focusTd.querySelector(':focus') && firstInput){
+    firstInput.focus(); firstInput.select();
+  }
+
+  row.addEventListener('keydown', function handler(e){
+    if(e.key==='Enter'){ e.preventDefault(); saveInlineEdit(row, entityType); row.removeEventListener('keydown',handler); }
+    if(e.key==='Escape'){ cancelInlineEdit(row); row.removeEventListener('keydown',handler); }
+  });
+
+  setTimeout(()=>{
+    document.addEventListener('click', function handler(e){
+      if(!row.contains(e.target) && !e.target.closest('.combo-drop')){
+        saveInlineEdit(row, entityType);
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 150);
+}
+
+function cancelInlineEdit(row){
+  delete row.dataset.editing;
+  row.classList.remove('editable-row');
+  editingRow = null;
+  // Re-render the relevant table
+  renderContainers(); renderLocations(); renderContacts(); renderFixturesSafe();
+}
+
+function renderFixturesSafe(){ if(allFixtures.length) renderFixtures(allFixtures); }
+
+async function saveInlineEdit(row, entityType){
+  if(!row.dataset.editing) return;
+  delete row.dataset.editing;
+  row.classList.remove('editable-row','row-saving');
+  editingRow = null;
 
   const id = parseInt(row.dataset.id);
-
-  // Restore cell to plain text (will be overwritten by reload, but needed if save fails or no-change)
-  td.dataset.val = val||'';
-  td.innerHTML = '';
-  if(td.dataset.type==='select'){
-    try{
-      const opts=JSON.parse(td.dataset.opts||'[]');
-      const found=opts.find(o=>String(o.v)===String(val||''));
-      td.innerHTML = found ? (td.dataset.field==='status_id'?badge(found.l):found.l) : (val||'—');
-    } catch(e){ td.textContent=val||'—'; }
-  } else {
-    td.textContent = val||'—';
-  }
+  const body = {};
+  row.querySelectorAll('td[data-field]').forEach(td=>{
+    const field = td.dataset.field;
+    const type  = td.dataset.type||'text';
+    const el    = td.querySelector('input,select');
+    let val = el ? el.value.trim() : td.dataset.orig;
+    if(val==='' || val==='—') val = null;
+    if(type==='number' && val!==null) val = parseFloat(val)||null;
+    if(type==='int'    && val!==null) val = parseInt(val)||null;
+    body[field] = val;
+  });
 
   try{
-    await saveFieldValue(entityType, id, field, type, numVal);
-    if(onCommit){
-      // Multi-drag: save remaining rows via callback, then reload once
-      await onCommit(val||'', field, type);
-    } else {
-      await reloadEntityData(entityType);
-      refreshDetailPopupIfOpen(entityType);
+    if(entityType==='container'){
+      const orig = allContainers.find(c=>c.container_id===id)||{};
+      const merged = Object.assign({}, orig, body,
+        {location_id:body.location_id!==undefined?body.location_id:orig.location_id,
+         status_id:body.status_id!==undefined?body.status_id:orig.status_id});
+      await api('PUT','/containers/'+id, {
+        short_name:merged.short_name||orig.short_name,
+        category:merged.category||null, container_type:merged.container_type||null,
+        location_id:merged.location_id||null, status_id:merged.status_id||null,
+        weight_kg:merged.weight_kg||null, width_cm:merged.width_cm||null,
+        depth_cm:merged.depth_cm||null, height_cm:merged.height_cm||null, note:merged.note||null
+      });
+      await loadContainersData(); renderContainers();
+    } else if(entityType==='fixture'){
+      const orig = allFixtures.find(f=>f.fixture_id===id)||{};
+      await api('PUT','/fixtures/'+id, Object.assign({},orig,body));
+      await loadFixtures();
+    } else if(entityType==='location'){
+      const orig = allLocations.find(l=>l.location_id===id)||{};
+      await api('PUT','/locations/'+id, Object.assign({},orig,body));
+      await loadLocationsData(); renderLocations();
+    } else if(entityType==='contact'){
+      const orig = allContacts.find(c=>c.contact_id===id)||{};
+      await api('PUT','/contacts/'+id, Object.assign({},orig,body));
+      await loadContactsData(); renderContacts();
     }
     toast('Saved');
   } catch(err){
     toast('Save failed: '+err.message, true);
-    td.textContent = td.dataset.orig||'—';
-    td.dataset.val = td.dataset.orig||'';
+    renderContainers(); renderLocations(); renderContacts(); renderFixturesSafe();
   }
 }
 
-function cancelCellEdit(cell){
-  if(!cell) return;
-  if(_editingCell===cell) _editingCell=null;
-  const {td, row, entityType} = cell;
-  td.classList.remove('shift-editing');
-  td.innerHTML='';
-  // Restore display value from orig
-  const orig = td.dataset.orig;
-  if(td.dataset.type==='select'){
-    // For select fields, show the label not the value
-    try{
-      const opts=JSON.parse(td.dataset.opts||'[]');
-      const found=opts.find(o=>String(o.v)===String(orig));
-      td.innerHTML = found ? (td.dataset.field==='status_id'?badge(found.l):found.l) : (orig||'—');
-    } catch(e){ td.textContent=orig||'—'; }
-  } else {
-    td.textContent = orig||'—';
-  }
-}
-
-// ── Save a single field value to API ─────────────────────────
-async function saveFieldValue(entityType, id, field, type, val){
-  if(entityType==='fixture'){
-    const orig=allFixtures.find(f=>f.fixture_id===id)||{};
-    await api('PUT','/fixtures/'+id, Object.assign({},
-      {short_name:orig.short_name,category:orig.category,subcategory:orig.subcategory,
-       manufacturer:orig.manufacturer,model:orig.model,weight_kg:orig.weight_kg,
-       power_w:orig.power_w,container_id:orig.container_id,status_id:orig.status_id,note:orig.note},
-      {[field]:val}));
-  } else if(entityType==='container'){
-    const orig=allContainers.find(c=>c.container_id===id)||{};
-    await api('PUT','/containers/'+id, Object.assign({},
-      {short_name:orig.short_name,category:orig.category,container_type:orig.container_type,
-       location_id:orig.location_id,weight_kg:orig.weight_kg,width_cm:orig.width_cm,
-       depth_cm:orig.depth_cm,height_cm:orig.height_cm,note:orig.note},
-      {[field]:val}));
-  } else if(entityType==='location'){
-    const orig=allLocations.find(l=>l.location_id===id)||{};
-    await api('PUT','/locations/'+id, Object.assign({},orig,{[field]:val}));
-  } else if(entityType==='contact'){
-    const orig=allContacts.find(c=>c.contact_id===id)||{};
-    await api('PUT','/contacts/'+id, Object.assign({},orig,{[field]:val}));
-  }
-}
-
-// ── Reload data after edit ────────────────────────────────────
-async function reloadEntityData(entityType){
-  if(entityType==='fixture')   { await loadFixtures(); }
-  if(entityType==='container') { await loadContainersData(); renderContainers(); }
-  if(entityType==='location')  { await loadLocationsData(); renderLocations(); }
-  if(entityType==='contact')   { await loadContactsData(); renderContacts(); }
-}
-
-function refreshDetailPopupIfOpen(entityType){
-  if(entityType!=='fixture') return;
-  const tbody = document.getElementById('fx-detail-tbody');
-  if(!tbody) return;
-  const title = document.getElementById('drill-title').textContent;
-  const name  = title.split(' — ')[0].trim();
-  if(name) openFxDetail(null, name);
-}
-
-// ── Keep activateInlineEdit as no-op (called from detail popup dblclick which we'll replace) ──
-function activateInlineEdit(row, entityType, focusTd){
-  if(focusTd) activateCellEdit(focusTd, row, entityType);
-}
-
-function cancelInlineEdit(row){ /* no-op — shift-click edit has no row-level state */ }
-function saveInlineEdit(row, entityType){ /* no-op */ }
-function renderFixturesSafe(){ if(allFixtures.length) renderFixtures(allFixtures); }
-
-// ── Wire shift-click edit to all tables ───────────────────────
+// ── Wire inline edit after init ───────────────────────────────
 function initInlineEdits(){
-  makeInlineEditable('ct-tbody',         'container');
-  makeInlineEditable('loc-tbody',        'location');
-  makeInlineEditable('con-tbody',        'contact');
-  makeInlineEditable('fx-tbody',         'fixture');
-}
-
-// ── Wire detail popup tbody (called after popup is rendered) ──
-function wireDetailPopupEdit(){
-  const tbody = document.getElementById('fx-detail-tbody');
-  if(!tbody) return;
-  makeInlineEditable('fx-detail-tbody', 'fixture');
+  makeInlineEditable('ct-tbody', 'container');
+  makeInlineEditable('loc-tbody', 'location');
+  makeInlineEditable('con-tbody', 'contact');
+  makeInlineEditable('fx-tbody',  'fixture');
 }
 
 init().then(()=>{ initInlineEdits(); });

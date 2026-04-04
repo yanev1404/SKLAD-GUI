@@ -53,7 +53,7 @@ class LocationOut(LocationBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ── Containers (no status_id) ────────────────────────────────
+# ── Containers ──────────────────────────────────────────────
 class ContainerBase(BaseModel):
     category:       Optional[str]   = None
     container_type: Optional[str]   = None
@@ -63,6 +63,7 @@ class ContainerBase(BaseModel):
     width_cm:       Optional[float] = None
     depth_cm:       Optional[float] = None
     height_cm:      Optional[float] = None
+    status_id:      Optional[int]   = None
     note:           Optional[str]   = None
 
 class ContainerCreate(ContainerBase):
@@ -76,11 +77,12 @@ class ContainerWithFixtures(ContainerOut):
     fixtures: List["FixtureOut"] = []
 
 
-# ── Fixtures (no quantity — each row = 1 unit) ───────────────
+# ── Fixtures ────────────────────────────────────────────────
 class FixtureBase(BaseModel):
     category:     Optional[str]   = None
     subcategory:  Optional[str]   = None
     short_name:   str
+    quantity:     int             = 1
     manufacturer: Optional[str]   = None
     model:        Optional[str]   = None
     weight_kg:    Optional[float] = None
@@ -90,22 +92,51 @@ class FixtureBase(BaseModel):
     note:         Optional[str]   = None
 
 class FixtureCreate(FixtureBase):
-    # quantity field accepted in API for convenience — creates N rows
-    quantity: int = 1
+    pass
 
 class FixtureOut(FixtureBase):
     fixture_id: int
     model_config = ConfigDict(from_attributes=True)
 
 
+# ── Events ──────────────────────────────────────────────────
+class EventBase(BaseModel):
+    short_name:  str
+    event_type:  Optional[str] = None
+    location_id: Optional[int] = None
+    contact_id:  Optional[int] = None
+    start_date:  Optional[datetime] = None
+    end_date:    Optional[datetime] = None
+    description: Optional[str] = None
+
+class EventCreate(EventBase):
+    pass
+
+class EventOut(EventBase):
+    event_id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ── Loads ────────────────────────────────────────────────────
+class LoadFixtureIn(BaseModel):
+    fixture_id: int
+    included:   bool = True
+
+class LoadContainerIn(BaseModel):
+    container_id: int
+
+class RemovedItem(BaseModel):
+    fixture_id:       int
+    quantity_removed: int
+
 class LoadCreate(BaseModel):
     origin_location_id:      int
     destination_location_id: int
-    event_id:                Optional[int] = None
     container_ids:           List[int]
-    # fixture IDs to exclude (moved to placeholder)
     deselected_fixture_ids:  List[int] = []
+    removed_items:           List[RemovedItem] = []
+    adjusted_quantities:     dict = {}
+    event_id:                Optional[int] = None
     note:                    Optional[str] = None
 
 class LoadOut(BaseModel):
@@ -113,16 +144,17 @@ class LoadOut(BaseModel):
     created_at:              datetime
     origin_location_id:      Optional[int]
     destination_location_id: Optional[int]
-    event_id:                Optional[int] = None
+    event_id:                Optional[int]
     status:                  str
     note:                    Optional[str]
     model_config = ConfigDict(from_attributes=True)
 
 
-# ── Load Manifest ────────────────────────────────────────────
+# ── Load Manifest (report) ───────────────────────────────────
 class ManifestFixture(BaseModel):
     fixture_id:   int
     short_name:   str
+    quantity:     int
     weight_kg:    Optional[float]
     included:     bool
 
@@ -145,7 +177,27 @@ class LoadManifest(BaseModel):
 
 # ── Status change (manual) ───────────────────────────────────
 class StatusChangeRequest(BaseModel):
-    entity_type:   str
-    entity_id:     int
+    entity_type: str   # 'fixture' or 'container'
+    entity_id:   int
     new_status_id: int
-    note:          Optional[str] = None
+    note:        Optional[str] = None
+
+
+# ── Events ───────────────────────────────────────────────────
+from datetime import datetime as _dt
+
+class EventBase(BaseModel):
+    short_name:  str
+    event_type:  Optional[str] = None
+    location_id: Optional[int] = None
+    contact_id:  Optional[int] = None
+    start_date:  Optional[_dt] = None
+    end_date:    Optional[_dt] = None
+    description: Optional[str] = None
+
+class EventCreate(EventBase):
+    pass
+
+class EventOut(EventBase):
+    event_id: int
+    model_config = ConfigDict(from_attributes=True)

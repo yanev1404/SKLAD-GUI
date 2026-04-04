@@ -1,27 +1,14 @@
-import asyncio
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
+import os
 
-from .routers import statuses, contacts, locations, containers, fixtures, loads, events
-from .scheduler import start_scheduler
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Run one immediate tick on startup (catchup), then schedule every 60s
-    task = asyncio.create_task(start_scheduler())
-    yield
-    task.cancel()
-
+from .routers import statuses, contacts, locations, containers, fixtures, loads
 
 app = FastAPI(
     title="Warehouse Management API",
     description="Backend for fixture and container inventory management.",
-    version="2.0.0",
-    lifespan=lifespan
+    version="1.0.0"
 )
 
 app.add_middleware(
@@ -41,7 +28,6 @@ app.include_router(locations.router)
 app.include_router(containers.router)
 app.include_router(fixtures.router)
 app.include_router(loads.router)
-app.include_router(events.router)
 
 
 @app.get("/", tags=["Health"])
@@ -53,6 +39,7 @@ def root():
     }
 
 
+# Serve the frontend — mounted last so API routes take priority
 _frontend = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(_frontend):
     app.mount("/app", StaticFiles(directory=_frontend, html=True), name="frontend")

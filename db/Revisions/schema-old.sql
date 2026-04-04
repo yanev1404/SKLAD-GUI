@@ -8,7 +8,6 @@ DROP TABLE IF EXISTS status_change_log  CASCADE;
 DROP TABLE IF EXISTS load_log           CASCADE;
 DROP TABLE IF EXISTS load_fixtures      CASCADE;
 DROP TABLE IF EXISTS load_containers    CASCADE;
-DROP TABLE IF EXISTS events             CASCADE;
 DROP TABLE IF EXISTS loads              CASCADE;
 DROP TABLE IF EXISTS fixtures           CASCADE;
 DROP TABLE IF EXISTS containers         CASCADE;
@@ -106,23 +105,6 @@ CREATE TABLE fixtures (
 );
 
 -- ============================================================
--- EVENTS
--- ============================================================
-CREATE TABLE events (
-    event_id    SERIAL PRIMARY KEY,
-    short_name  VARCHAR(128) NOT NULL,
-    event_type  VARCHAR(64),
-    location_id INT REFERENCES locations(location_id) ON DELETE SET NULL,
-    contact_id  INT REFERENCES contacts(contact_id)   ON DELETE SET NULL,
-    start_date  TIMESTAMPTZ,
-    end_date    TIMESTAMPTZ,
-    description TEXT
-);
-
-CREATE INDEX idx_events_location ON events(location_id);
-CREATE INDEX idx_events_dates    ON events(start_date, end_date);
-
--- ============================================================
 -- LOADS
 -- ============================================================
 CREATE TABLE loads (
@@ -130,15 +112,10 @@ CREATE TABLE loads (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     origin_location_id      INT REFERENCES locations(location_id) ON DELETE SET NULL,
     destination_location_id INT REFERENCES locations(location_id) ON DELETE SET NULL,
-    event_id                INT REFERENCES events(event_id) ON DELETE SET NULL,
     status                  VARCHAR(32) NOT NULL DEFAULT 'completed'
                                 CHECK (status IN ('completed', 'storno')),
-    event_activated         BOOLEAN NOT NULL DEFAULT FALSE,
-    event_ended             BOOLEAN NOT NULL DEFAULT FALSE,
     note                    TEXT
 );
-
-CREATE INDEX idx_loads_event ON loads(event_id);
 
 -- ============================================================
 -- LOAD CONTAINERS  (which containers are on a load)

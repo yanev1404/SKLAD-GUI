@@ -16,6 +16,7 @@ def list_containers(location_id: int | None = None, db: Session = Depends(get_db
 
 @router.get("/{container_id}", response_model=schemas.ContainerWithFixtures)
 def get_container(container_id: int, db: Session = Depends(get_db)):
+    """Fetch container + all its fixtures. Used by barcode scanner lookup."""
     obj = (
         db.query(models.Container)
         .options(joinedload(models.Container.fixtures))
@@ -57,3 +58,31 @@ def delete_container(container_id: int, db: Session = Depends(get_db)):
         raise HTTPException(409, "Cannot delete a placeholder container directly")
     db.delete(obj)
     db.commit()
+
+
+@router.post("/{container_id}/status", response_model=schemas.ContainerOut)
+def change_container_status(
+    container_id: int,
+    payload: schemas.StatusChangeRequest,
+    db: Session = Depends(get_db)
+):
+    """Manual status change with audit log entry."""
+    obj = db.get(models.Container, container_id)
+    if not obj:
+        raise HTTPException(404, "Container not found")
+    new_status = db.get(models.Status, payload.new_status_id)
+    if not new_status:
+        raise HTTPException(404, "Status not found")
+
+    log = models.StatusChangeLog(
+        entity_type=   "container",
+        entity_id=     container_id,
+        old_status_id= obj.status_id,
+        new_status_id= payload.new_status_id,
+        note=          payload.note
+    )
+    obj.status_id = payload.new_status_id
+    db.add(log)
+    db.commit()
+    db.refresh(obj)
+    return obj

@@ -39,10 +39,11 @@ class Location(Base):
     placeholder_container_id = Column(Integer, ForeignKey("containers.container_id", ondelete="SET NULL"))
     note                     = Column(Text)
 
-    contact     = relationship("Contact", back_populates="locations")
-    containers  = relationship("Container", back_populates="location",
-                               foreign_keys="Container.location_id")
-    placeholder = relationship("Container", foreign_keys=[placeholder_container_id])
+    contact    = relationship("Contact", back_populates="locations")
+    containers = relationship("Container", back_populates="location",
+                              foreign_keys="Container.location_id")
+    placeholder = relationship("Container",
+                               foreign_keys=[placeholder_container_id])
 
 
 class Container(Base):
@@ -56,11 +57,12 @@ class Container(Base):
     width_cm       = Column(Numeric(8, 2))
     depth_cm       = Column(Numeric(8, 2))
     height_cm      = Column(Numeric(8, 2))
-    # status_id removed — containers carry location only; fixtures carry status
+    status_id      = Column(Integer, ForeignKey("statuses.status_id", ondelete="SET NULL"))
     note           = Column(Text)
 
     location = relationship("Location", back_populates="containers",
                             foreign_keys=[location_id])
+    status   = relationship("Status")
     fixtures = relationship("Fixture", back_populates="container")
 
 
@@ -70,7 +72,7 @@ class Fixture(Base):
     category     = Column(String(64))
     subcategory  = Column(String(64))
     short_name   = Column(String(128), nullable=False)
-    # quantity column removed — each row is one physical unit
+    quantity     = Column(Integer, nullable=False, default=1)
     manufacturer = Column(String(128))
     model        = Column(String(128))
     weight_kg    = Column(Numeric(8, 2))
@@ -83,21 +85,6 @@ class Fixture(Base):
     status    = relationship("Status")
 
 
-class Event(Base):
-    __tablename__ = "events"
-    event_id    = Column(Integer, primary_key=True)
-    short_name  = Column(String(128), nullable=False)
-    event_type  = Column(String(64))
-    location_id = Column(Integer, ForeignKey("locations.location_id", ondelete="SET NULL"))
-    contact_id  = Column(Integer, ForeignKey("contacts.contact_id",   ondelete="SET NULL"))
-    start_date  = Column(TIMESTAMP(timezone=True))
-    end_date    = Column(TIMESTAMP(timezone=True))
-    description = Column(Text)
-
-    location = relationship("Location", foreign_keys=[location_id])
-    contact  = relationship("Contact",  foreign_keys=[contact_id])
-
-
 class Load(Base):
     __tablename__ = "loads"
     load_id                 = Column(Integer, primary_key=True)
@@ -105,14 +92,10 @@ class Load(Base):
     origin_location_id      = Column(Integer, ForeignKey("locations.location_id", ondelete="SET NULL"))
     destination_location_id = Column(Integer, ForeignKey("locations.location_id", ondelete="SET NULL"))
     status                  = Column(String(32), nullable=False, default="completed")
-    event_id                = Column(Integer, ForeignKey("events.event_id", ondelete="SET NULL"))
-    event_activated         = Column(Boolean, nullable=False, default=False)
-    event_ended             = Column(Boolean, nullable=False, default=False)
     note                    = Column(Text)
 
     origin      = relationship("Location", foreign_keys=[origin_location_id])
     destination = relationship("Location", foreign_keys=[destination_location_id])
-    event       = relationship("Event",    foreign_keys=[event_id])
     containers  = relationship("LoadContainer", back_populates="load", cascade="all, delete-orphan")
     fixtures    = relationship("LoadFixture",   back_populates="load", cascade="all, delete-orphan")
     log_entries = relationship("LoadLog",       back_populates="load", cascade="all, delete-orphan")
@@ -131,7 +114,7 @@ class LoadContainer(Base):
 class LoadFixture(Base):
     __tablename__ = "load_fixtures"
     id         = Column(Integer, primary_key=True)
-    load_id    = Column(Integer, ForeignKey("loads.load_id",       ondelete="CASCADE"), nullable=False)
+    load_id    = Column(Integer, ForeignKey("loads.load_id",    ondelete="CASCADE"), nullable=False)
     fixture_id = Column(Integer, ForeignKey("fixtures.fixture_id", ondelete="CASCADE"), nullable=False)
     included   = Column(Boolean, nullable=False, default=True)
 

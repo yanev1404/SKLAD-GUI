@@ -37,11 +37,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .filter-lbl{color:#555a72;font-size:11px;white-space:nowrap}
 .group-toggle-btn{background:#0b0d14;border:1px solid #2a2d3a;color:#555a72;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .12s}
 .group-toggle-btn.active{background:#161e40;border-color:#4f5fcc;color:#7b8cde}
-.shift-hover{background:#0d1830!important;outline:1px solid #2a4a7a;cursor:cell}
-.shift-selected{background:#0d1a30!important;outline:1px solid #4f5fcc}
-.shift-editing{background:#0a1220!important;outline:2px solid #4f5fcc}
-body.shift-mode *{cursor:cell!important}
-body.shift-mode td[data-field]{user-select:none}
 .ct-row{cursor:default}
 .ct-row:hover td{background:#161926}
 .ct-row td{transition:background .1s}
@@ -1207,8 +1202,16 @@ function openFxDetail(e, name){
   document.getElementById('drill-body').innerHTML = body;
   document.getElementById('modal-drill').style.display='flex';
 
-  // Wire shift-click edit on detail rows
-  wireDetailPopupEdit();
+  // Wire inline edit on detail rows — single fixture edits
+  const tbody = document.getElementById('fx-detail-tbody');
+  tbody.addEventListener('dblclick', async ev=>{
+    if(ev.target.closest('button')) return;
+    const td = ev.target.closest('td[data-field]');
+    if(!td) return;
+    const row = td.closest('tr[data-id]');
+    if(!row||row.dataset.editing) return;
+    activateInlineEdit(row, 'fixture', td);
+  });
 }
 
 // Keep old name as alias for any remaining calls
@@ -2867,315 +2870,252 @@ document.querySelectorAll('.modal-bg').forEach(bg=>{
 // ── Inline row editing ────────────────────────────────────────
 // Generic: click a data row → cells become inputs → blur/Enter saves → Escape cancels
 
-// ════════════════════════════════════════════════════════════════
-// SHIFT-CLICK / SHIFT-DRAG CELL EDITOR
-// ════════════════════════════════════════════════════════════════
-// Single shift+click  → activate input in that cell immediately
-// Shift+mousedown + drag down column → select range, release → input in first cell, Enter applies to all
-// Works on: fx-tbody (fixture groups), fx-detail-tbody (individual fixtures),
-//           ct-tbody, loc-tbody, con-tbody
-
-let _shiftDrag = null;   // { tbody, entityType, colIndex, cells:[], startRow }
-let _editingCell = null; // { td, row, entityType, input }
-
-// ── Attach shift-click/drag to a tbody ───────────────────────
 function makeInlineEditable(tbodyId, entityType){
   const tbody = document.getElementById(tbodyId);
   if(!tbody) return;
-
-  tbody.addEventListener('mousedown', e=>{
-    if(!e.shiftKey) return;
+  tbody.addEventListener('dblclick', async e=>{
+    if(e.target.closest('button')) return;
     const td = e.target.closest('td[data-field]');
     if(!td) return;
     const row = td.closest('tr[data-id]');
-    if(!row) return;
-    e.preventDefault();
-
-    // Find column index within this row's data-field cells
-    const allTds = [...row.querySelectorAll('td[data-field]')];
-    const colIdx = allTds.indexOf(td);
-    if(colIdx === -1) return;
-
-    document.body.classList.add('shift-mode');
-    td.classList.add('shift-selected');
-
-    _shiftDrag = { tbody, entityType, colIdx, cells:[{td, row}], startRow: row };
+    if(!row || row.dataset.editing) return;
+    activateInlineEdit(row, entityType, td);
   });
-
-  tbody.addEventListener('mouseover', e=>{
-    if(!_shiftDrag || _shiftDrag.tbody !== tbody) return;
-    const td = e.target.closest('td[data-field]');
-    if(!td) return;
-    const row = td.closest('tr[data-id]');
-    if(!row) return;
-
-    // Must be same column index
-    const allTds = [...row.querySelectorAll('td[data-field]')];
-    if(allTds.indexOf(td) !== _shiftDrag.colIdx) return;
-
-    // Add to selection if not already there
-    const already = _shiftDrag.cells.find(x=>x.row===row);
-    if(!already){
-      _shiftDrag.cells.push({td, row});
-      td.classList.add('shift-selected');
-    }
-  });
-
-  document.addEventListener('mouseup', async e=>{
-    if(!_shiftDrag) return;
-    document.body.classList.remove('shift-mode');
-    const drag = _shiftDrag;
-    _shiftDrag = null;
-
-    const {cells, entityType} = drag;
-    cells.forEach(x=>x.td.classList.remove('shift-selected'));
-
-    if(cells.length === 1){
-      // Single cell — activate immediately
-      activateCellEdit(cells[0].td, cells[0].row, entityType);
-    } else {
-      // Multi-cell drag — activate first cell, on commit apply to all remaining rows
-      activateCellEdit(cells[0].td, cells[0].row, entityType, async (value, field, type)=>{
-        for(const {td, row} of cells.slice(1)){
-          const id  = parseInt(row.dataset.id);
-          const fld = td.dataset.field;
-          const typ = td.dataset.type||'text';
-          let val = value===''||value==='—' ? null : value;
-          if(typ==='number' && val!==null) val=parseFloat(val)||null;
-          if(typ==='int'    && val!==null) val=parseInt(val)||null;
-          await saveFieldValue(entityType, id, fld, typ, val);
-        }
-        // Single reload + popup refresh after ALL rows saved
-        await reloadEntityData(entityType);
-        refreshDetailPopupIfOpen(entityType);
-      });
-    }
-  }, { capture: false });
 }
 
-// ── Activate a single cell for editing ───────────────────────
-function activateCellEdit(td, row, entityType, onCommit){
-  // Cancel any existing cell edit
-  if(_editingCell) commitCellEdit(_editingCell);
-
-  const field = td.dataset.field;
-  const type  = td.dataset.type||'text';
-  const val   = td.dataset.val !== undefined ? td.dataset.val : td.textContent.trim();
-
-  td.classList.add('shift-editing');
-  td.dataset.orig = val;
-
-  let input;
-
-  if(type==='select'){
-    const opts = JSON.parse(td.dataset.opts||'[]');
-    input = document.createElement('select');
-    input.className = 'edit-select';
-    opts.forEach(o=>{
-      const opt = document.createElement('option');
-      opt.value=o.v; opt.textContent=o.l;
-      if(String(o.v)===String(val)) opt.selected=true;
-      input.appendChild(opt);
-    });
-    td.innerHTML=''; td.appendChild(input);
-    input.focus();
-    // Select fields commit on change
-    input.addEventListener('change', ()=>commitCellEdit({td,row,entityType,input,onCommit}));
-
-  } else if(type==='number'||type==='int'){
-    input = document.createElement('input');
-    input.type='number'; input.className='edit-input';
-    input.value = val==='—'?'':val;
-    input.step = type==='int'?'1':'0.01';
-    td.innerHTML=''; td.appendChild(input);
-    input.focus(); input.select();
-
-  } else {
-    // Text with combobox
-    const wrap = document.createElement('div');
-    wrap.className='combo-wrap'; wrap.style.cssText='position:relative;width:100%';
-    input = document.createElement('input');
-    input.type='text'; input.className='edit-input';
-    input.value = val==='—'?'':val;
-    input.autocomplete='off';
-    wrap.appendChild(input);
-    td.innerHTML=''; td.appendChild(wrap);
-    input.focus(); input.select();
-
-    // Build combo
-    const opts = inlineOpts(field, entityType, row);
-    if(opts.length){
-      let onPick = null;
-      if(field==='model'){
-        onPick = mdl=>{
-          const mfrTd=row.querySelector('td[data-field="manufacturer"]');
-          const mfr=mfrTd?(mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value:'';
-          const p=getParamsForModel(mdl,mfr);
-          if(p){
-            const wtTd=row.querySelector('td[data-field="weight_kg"]');
-            const pwTd=row.querySelector('td[data-field="power_w"]');
-            if(wtTd&&p.weight_kg!=null){const i=wtTd.querySelector('input');if(i)i.value=p.weight_kg;}
-            if(pwTd&&p.power_w!=null){ const i=pwTd.querySelector('input');if(i)i.value=p.power_w; }
-          }
-        };
-      }
-      buildInlineCombo(input, opts, onPick);
+// Returns suggestion list for a given field + entityType
+function inlineOpts(field, entityType, row){
+  if(entityType==='fixture'){
+    if(field==='category')    return getUnique('category');
+    if(field==='subcategory'){
+      const catTd = row.querySelector('td[data-field="category"]');
+      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
+      return getSubcatsForCat(cat);
+    }
+    if(field==='manufacturer'){
+      const catTd = row.querySelector('td[data-field="category"]');
+      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
+      return getMfrsForCat(cat);
+    }
+    if(field==='model'){
+      const mfrTd = row.querySelector('td[data-field="manufacturer"]');
+      const catTd = row.querySelector('td[data-field="category"]');
+      const mfr = mfrTd ? (mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value : '';
+      const cat = catTd ? (catTd.querySelector('input')||{value:catTd.dataset.val||''}).value : '';
+      return getModelsForMfr(mfr, cat);
     }
   }
-
-  _editingCell = {td, row, entityType, input, onCommit};
-
-  // Enter = commit, Escape = cancel
-  input.addEventListener('keydown', async kev=>{
-    if(kev.key==='Enter'){ kev.preventDefault(); await commitCellEdit(_editingCell); }
-    if(kev.key==='Escape'){ cancelCellEdit(_editingCell); }
-  });
-
+  if(entityType==='container'){
+    if(field==='category')       return [...new Set(allContainers.map(c=>c.category).filter(Boolean))].sort();
+    if(field==='container_type') return [...new Set(allContainers.map(c=>c.container_type).filter(Boolean))].sort();
+    if(field==='short_name')     return [];
+  }
+  if(entityType==='location'){
+    if(field==='type') return [...new Set(allLocations.map(l=>l.type).filter(Boolean))].sort();
+    if(field==='city') return [...new Set(allLocations.map(l=>l.city).filter(Boolean))].sort();
+  }
+  if(entityType==='contact'){
+    if(field==='company') return [...new Set(allContacts.map(c=>c.company).filter(Boolean))].sort();
+  }
+  return [];
 }
 
-// ── Global click-outside: commit any open cell when clicking outside its table ──
-document.addEventListener('mousedown', async ev=>{
-  if(!_editingCell) return;
-  const {td} = _editingCell;
-  // Allow clicks inside the cell or a combo dropdown
-  if(td.contains(ev.target) || ev.target.closest('.combo-drop')) return;
-  // Allow clicks inside the same table (switching cells commits via activateCellEdit)
-  const table = td.closest('table');
-  if(table && table.contains(ev.target)) return;
-  await commitCellEdit(_editingCell);
-});
+function buildInlineCombo(inp, options, onPick){
+  let drop = inp.parentElement.querySelector('.combo-drop');
+  if(drop) drop.remove();
+  drop = document.createElement('div');
+  drop.className = 'combo-drop';
+  inp.parentElement.appendChild(drop);
 
-// ── Commit a cell edit ────────────────────────────────────────
-async function commitCellEdit(cell){
-  if(!cell) return;
-  if(_editingCell===cell) _editingCell=null;
-  const {td, row, entityType, input, onCommit} = cell;
-  td.classList.remove('shift-editing');
+  function render(q){
+    const filtered = options.filter(o=>!q||o.toLowerCase().includes(q.toLowerCase()));
+    const showNew  = q && !options.some(o=>o.toLowerCase()===q.toLowerCase());
+    drop.innerHTML =
+      filtered.map(o=>`<div class="combo-opt" data-val="${o}">${o}</div>`).join('') +
+      (showNew ? `<div class="combo-opt new-opt" data-val="${q}">+ Add "${q}"</div>` : '');
+    drop.querySelectorAll('.combo-opt').forEach(el=>{
+      el.addEventListener('mousedown', e=>{
+        e.preventDefault();
+        inp.value = el.dataset.val;
+        drop.style.display='none';
+        if(onPick) onPick(el.dataset.val);
+      });
+    });
+    drop.style.display = filtered.length||showNew ? 'block' : 'none';
+  }
 
-  const field = td.dataset.field;
-  const type  = td.dataset.type||'text';
-  let val = input ? input.value.trim() : td.dataset.orig;
-  if(val===''||val==='—') val=null;
-  let numVal = val;
-  if(type==='number'&&val!==null) numVal=parseFloat(val)||null;
-  if(type==='int'   &&val!==null) numVal=parseInt(val)||null;
+  inp.addEventListener('input', ()=>render(inp.value));
+  inp.addEventListener('focus', ()=>render(inp.value));
+  inp.addEventListener('blur',  ()=>setTimeout(()=>{ drop.style.display='none'; }, 150));
+  render('');
+}
+
+function activateInlineEdit(row, entityType, focusTd){
+  if(editingRow && editingRow !== row) cancelInlineEdit(editingRow);
+  row.dataset.editing = '1';
+  editingRow = row;
+  row.classList.add('editable-row');
+
+  const cells = row.querySelectorAll('td[data-field]');
+  let firstInput = null;
+
+  cells.forEach(td=>{
+    const field = td.dataset.field;
+    const val   = td.dataset.val !== undefined ? td.dataset.val : td.textContent.trim();
+    const type  = td.dataset.type||'text';
+    td.dataset.orig = val;
+    td.classList.add('editable-cell');
+
+    if(type==='select'){
+      const opts = JSON.parse(td.dataset.opts||'[]');
+      const sel = document.createElement('select');
+      sel.className = 'edit-select';
+      opts.forEach(o=>{
+        const opt = document.createElement('option');
+        opt.value = o.v; opt.textContent = o.l;
+        if(String(o.v)===String(val)) opt.selected=true;
+        sel.appendChild(opt);
+      });
+      td.innerHTML=''; td.appendChild(sel);
+      if(td===focusTd) sel.focus();
+
+    } else if(type==='number' || type==='int'){
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 'edit-input';
+      inp.value = val==='—'?'':val;
+      inp.step = type==='int' ? '1' : '0.01';
+      td.innerHTML=''; td.appendChild(inp);
+      if(!firstInput) firstInput = inp;
+      if(td===focusTd){ inp.focus(); inp.select(); }
+
+    } else {
+      // text with inline combobox
+      const wrap = document.createElement('div');
+      wrap.className = 'combo-wrap';
+      wrap.style.cssText = 'position:relative;width:100%';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'edit-input';
+      inp.value = val==='—'?'':val;
+      inp.autocomplete = 'off';
+      wrap.appendChild(inp);
+      td.innerHTML=''; td.appendChild(wrap);
+
+      if(!firstInput) firstInput = inp;
+      if(td===focusTd){
+        inp.focus(); inp.select();
+        // only build combo on the cell that was double-clicked
+        const opts = inlineOpts(field, entityType, row);
+        if(opts.length){
+          let onPick = null;
+          if(field==='model'){
+            onPick = (mdl)=>{
+              const mfrTd = row.querySelector('td[data-field="manufacturer"]');
+              const mfr = mfrTd?(mfrTd.querySelector('input')||{value:mfrTd.dataset.val||''}).value:'';
+              const p = getParamsForModel(mdl, mfr);
+              if(p){
+                const wtTd = row.querySelector('td[data-field="weight_kg"]');
+                const pwTd = row.querySelector('td[data-field="power_w"]');
+                if(wtTd && p.weight_kg!=null){ const i=wtTd.querySelector('input'); if(i) i.value=p.weight_kg; }
+                if(pwTd && p.power_w!=null){  const i=pwTd.querySelector('input'); if(i) i.value=p.power_w; }
+              }
+            };
+          }
+          buildInlineCombo(inp, opts, onPick);
+        }
+      }
+    }
+  });
+
+  if(focusTd && !focusTd.querySelector(':focus') && firstInput){
+    firstInput.focus(); firstInput.select();
+  }
+
+  row.addEventListener('keydown', function handler(e){
+    if(e.key==='Enter'){ e.preventDefault(); saveInlineEdit(row, entityType); row.removeEventListener('keydown',handler); }
+    if(e.key==='Escape'){ cancelInlineEdit(row); row.removeEventListener('keydown',handler); }
+  });
+
+  setTimeout(()=>{
+    document.addEventListener('click', function handler(e){
+      if(!row.contains(e.target) && !e.target.closest('.combo-drop')){
+        saveInlineEdit(row, entityType);
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 150);
+}
+
+function cancelInlineEdit(row){
+  delete row.dataset.editing;
+  row.classList.remove('editable-row');
+  editingRow = null;
+  // Re-render the relevant table
+  renderContainers(); renderLocations(); renderContacts(); renderFixturesSafe();
+}
+
+function renderFixturesSafe(){ if(allFixtures.length) renderFixtures(allFixtures); }
+
+async function saveInlineEdit(row, entityType){
+  if(!row.dataset.editing) return;
+  delete row.dataset.editing;
+  row.classList.remove('editable-row','row-saving');
+  editingRow = null;
 
   const id = parseInt(row.dataset.id);
-
-  // Restore cell to plain text (will be overwritten by reload, but needed if save fails or no-change)
-  td.dataset.val = val||'';
-  td.innerHTML = '';
-  if(td.dataset.type==='select'){
-    try{
-      const opts=JSON.parse(td.dataset.opts||'[]');
-      const found=opts.find(o=>String(o.v)===String(val||''));
-      td.innerHTML = found ? (td.dataset.field==='status_id'?badge(found.l):found.l) : (val||'—');
-    } catch(e){ td.textContent=val||'—'; }
-  } else {
-    td.textContent = val||'—';
-  }
+  const body = {};
+  row.querySelectorAll('td[data-field]').forEach(td=>{
+    const field = td.dataset.field;
+    const type  = td.dataset.type||'text';
+    const el    = td.querySelector('input,select');
+    let val = el ? el.value.trim() : td.dataset.orig;
+    if(val==='' || val==='—') val = null;
+    if(type==='number' && val!==null) val = parseFloat(val)||null;
+    if(type==='int'    && val!==null) val = parseInt(val)||null;
+    body[field] = val;
+  });
 
   try{
-    await saveFieldValue(entityType, id, field, type, numVal);
-    if(onCommit){
-      // Multi-drag: save remaining rows via callback, then reload once
-      await onCommit(val||'', field, type);
-    } else {
-      await reloadEntityData(entityType);
-      refreshDetailPopupIfOpen(entityType);
+    if(entityType==='container'){
+      const orig = allContainers.find(c=>c.container_id===id)||{};
+      const merged = Object.assign({}, orig, body,
+        {location_id:body.location_id!==undefined?body.location_id:orig.location_id,
+         status_id:body.status_id!==undefined?body.status_id:orig.status_id});
+      await api('PUT','/containers/'+id, {
+        short_name:merged.short_name||orig.short_name,
+        category:merged.category||null, container_type:merged.container_type||null,
+        location_id:merged.location_id||null, status_id:merged.status_id||null,
+        weight_kg:merged.weight_kg||null, width_cm:merged.width_cm||null,
+        depth_cm:merged.depth_cm||null, height_cm:merged.height_cm||null, note:merged.note||null
+      });
+      await loadContainersData(); renderContainers();
+    } else if(entityType==='fixture'){
+      const orig = allFixtures.find(f=>f.fixture_id===id)||{};
+      await api('PUT','/fixtures/'+id, Object.assign({},orig,body));
+      await loadFixtures();
+    } else if(entityType==='location'){
+      const orig = allLocations.find(l=>l.location_id===id)||{};
+      await api('PUT','/locations/'+id, Object.assign({},orig,body));
+      await loadLocationsData(); renderLocations();
+    } else if(entityType==='contact'){
+      const orig = allContacts.find(c=>c.contact_id===id)||{};
+      await api('PUT','/contacts/'+id, Object.assign({},orig,body));
+      await loadContactsData(); renderContacts();
     }
     toast('Saved');
   } catch(err){
     toast('Save failed: '+err.message, true);
-    td.textContent = td.dataset.orig||'—';
-    td.dataset.val = td.dataset.orig||'';
+    renderContainers(); renderLocations(); renderContacts(); renderFixturesSafe();
   }
 }
 
-function cancelCellEdit(cell){
-  if(!cell) return;
-  if(_editingCell===cell) _editingCell=null;
-  const {td, row, entityType} = cell;
-  td.classList.remove('shift-editing');
-  td.innerHTML='';
-  // Restore display value from orig
-  const orig = td.dataset.orig;
-  if(td.dataset.type==='select'){
-    // For select fields, show the label not the value
-    try{
-      const opts=JSON.parse(td.dataset.opts||'[]');
-      const found=opts.find(o=>String(o.v)===String(orig));
-      td.innerHTML = found ? (td.dataset.field==='status_id'?badge(found.l):found.l) : (orig||'—');
-    } catch(e){ td.textContent=orig||'—'; }
-  } else {
-    td.textContent = orig||'—';
-  }
-}
-
-// ── Save a single field value to API ─────────────────────────
-async function saveFieldValue(entityType, id, field, type, val){
-  if(entityType==='fixture'){
-    const orig=allFixtures.find(f=>f.fixture_id===id)||{};
-    await api('PUT','/fixtures/'+id, Object.assign({},
-      {short_name:orig.short_name,category:orig.category,subcategory:orig.subcategory,
-       manufacturer:orig.manufacturer,model:orig.model,weight_kg:orig.weight_kg,
-       power_w:orig.power_w,container_id:orig.container_id,status_id:orig.status_id,note:orig.note},
-      {[field]:val}));
-  } else if(entityType==='container'){
-    const orig=allContainers.find(c=>c.container_id===id)||{};
-    await api('PUT','/containers/'+id, Object.assign({},
-      {short_name:orig.short_name,category:orig.category,container_type:orig.container_type,
-       location_id:orig.location_id,weight_kg:orig.weight_kg,width_cm:orig.width_cm,
-       depth_cm:orig.depth_cm,height_cm:orig.height_cm,note:orig.note},
-      {[field]:val}));
-  } else if(entityType==='location'){
-    const orig=allLocations.find(l=>l.location_id===id)||{};
-    await api('PUT','/locations/'+id, Object.assign({},orig,{[field]:val}));
-  } else if(entityType==='contact'){
-    const orig=allContacts.find(c=>c.contact_id===id)||{};
-    await api('PUT','/contacts/'+id, Object.assign({},orig,{[field]:val}));
-  }
-}
-
-// ── Reload data after edit ────────────────────────────────────
-async function reloadEntityData(entityType){
-  if(entityType==='fixture')   { await loadFixtures(); }
-  if(entityType==='container') { await loadContainersData(); renderContainers(); }
-  if(entityType==='location')  { await loadLocationsData(); renderLocations(); }
-  if(entityType==='contact')   { await loadContactsData(); renderContacts(); }
-}
-
-function refreshDetailPopupIfOpen(entityType){
-  if(entityType!=='fixture') return;
-  const tbody = document.getElementById('fx-detail-tbody');
-  if(!tbody) return;
-  const title = document.getElementById('drill-title').textContent;
-  const name  = title.split(' — ')[0].trim();
-  if(name) openFxDetail(null, name);
-}
-
-// ── Keep activateInlineEdit as no-op (called from detail popup dblclick which we'll replace) ──
-function activateInlineEdit(row, entityType, focusTd){
-  if(focusTd) activateCellEdit(focusTd, row, entityType);
-}
-
-function cancelInlineEdit(row){ /* no-op — shift-click edit has no row-level state */ }
-function saveInlineEdit(row, entityType){ /* no-op */ }
-function renderFixturesSafe(){ if(allFixtures.length) renderFixtures(allFixtures); }
-
-// ── Wire shift-click edit to all tables ───────────────────────
+// ── Wire inline edit after init ───────────────────────────────
 function initInlineEdits(){
-  makeInlineEditable('ct-tbody',         'container');
-  makeInlineEditable('loc-tbody',        'location');
-  makeInlineEditable('con-tbody',        'contact');
-  makeInlineEditable('fx-tbody',         'fixture');
-}
-
-// ── Wire detail popup tbody (called after popup is rendered) ──
-function wireDetailPopupEdit(){
-  const tbody = document.getElementById('fx-detail-tbody');
-  if(!tbody) return;
-  makeInlineEditable('fx-detail-tbody', 'fixture');
+  makeInlineEditable('ct-tbody', 'container');
+  makeInlineEditable('loc-tbody', 'location');
+  makeInlineEditable('con-tbody', 'contact');
+  makeInlineEditable('fx-tbody',  'fixture');
 }
 
 init().then(()=>{ initInlineEdits(); });

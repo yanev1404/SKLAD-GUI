@@ -56,11 +56,12 @@ class Container(Base):
     width_cm       = Column(Numeric(8, 2))
     depth_cm       = Column(Numeric(8, 2))
     height_cm      = Column(Numeric(8, 2))
-    # status_id removed — containers carry location only; fixtures carry status
+    status_id      = Column(Integer, ForeignKey("statuses.status_id", ondelete="SET NULL"))
     note           = Column(Text)
 
     location = relationship("Location", back_populates="containers",
                             foreign_keys=[location_id])
+    status   = relationship("Status")
     fixtures = relationship("Fixture", back_populates="container")
 
 
@@ -70,7 +71,7 @@ class Fixture(Base):
     category     = Column(String(64))
     subcategory  = Column(String(64))
     short_name   = Column(String(128), nullable=False)
-    # quantity column removed — each row is one physical unit
+    quantity     = Column(Integer, nullable=False, default=1)
     manufacturer = Column(String(128))
     model        = Column(String(128))
     weight_kg    = Column(Numeric(8, 2))
