@@ -71,3 +71,16 @@ def delete_location(location_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Location not found")
     db.delete(obj)
     db.commit()
+
+@router.put("/upsert/{location_id}", response_model=schemas.LocationOut)
+def upsert_location(location_id: int, payload: schemas.LocationCreate, db: Session = Depends(get_db)):
+    obj = db.get(models.Location, location_id)
+    data = payload.model_dump()
+    if obj:
+        for k, v in data.items():
+            setattr(obj, k, v)
+    else:
+        obj = models.Location(location_id=location_id, **data)
+        db.add(obj)
+    db.commit(); db.refresh(obj)
+    return obj

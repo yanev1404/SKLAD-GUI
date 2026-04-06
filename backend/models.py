@@ -56,7 +56,6 @@ class Container(Base):
     width_cm       = Column(Numeric(8, 2))
     depth_cm       = Column(Numeric(8, 2))
     height_cm      = Column(Numeric(8, 2))
-    # status_id removed — containers carry location only; fixtures carry status
     note           = Column(Text)
 
     location = relationship("Location", back_populates="containers",
@@ -64,23 +63,69 @@ class Container(Base):
     fixtures = relationship("Fixture", back_populates="container")
 
 
+class FixtureModel(Base):
+    """Model/product specification — shared across many fixture units."""
+    __tablename__ = "models"
+    model_id      = Column(Integer, primary_key=True)
+    model_name    = Column(String(128), nullable=False)
+    category      = Column(String(64))
+    subcategory   = Column(String(64))
+    manufacturer  = Column(String(128))
+    model         = Column(String(128))
+    weight_kg     = Column(Numeric(8, 2))
+    width_cm      = Column(Numeric(8, 2))
+    depth_cm      = Column(Numeric(8, 2))
+    height_cm     = Column(Numeric(8, 2))
+    power_w       = Column(Numeric(8, 2))
+    description   = Column(Text)
+    preview_image = Column(String(255))   # filename in db/images/
+    created_at    = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    fixtures = relationship("Fixture", back_populates="fixture_model")
+    files    = relationship("ModelFile", back_populates="model", cascade="all, delete-orphan")
+
+
 class Fixture(Base):
     __tablename__ = "fixtures"
     fixture_id   = Column(Integer, primary_key=True)
-    category     = Column(String(64))
-    subcategory  = Column(String(64))
-    short_name   = Column(String(128), nullable=False)
-    # quantity column removed — each row is one physical unit
-    manufacturer = Column(String(128))
-    model        = Column(String(128))
-    weight_kg    = Column(Numeric(8, 2))
-    power_w      = Column(Numeric(8, 2))
+    short_name   = Column(String(128), nullable=False)   # display/grouping name, independent of model
+    model_id     = Column(Integer, ForeignKey("models.model_id", ondelete="SET NULL"))
     container_id = Column(Integer, ForeignKey("containers.container_id", ondelete="SET NULL"))
-    status_id    = Column(Integer, ForeignKey("statuses.status_id", ondelete="SET NULL"))
-    note         = Column(Text)
+    status_id    = Column(Integer, ForeignKey("statuses.status_id",   ondelete="SET NULL"))
+    note         = Column(Text)   # per-unit notes e.g. serial numbers
 
-    container = relationship("Container", back_populates="fixtures")
-    status    = relationship("Status")
+    fixture_model = relationship("FixtureModel", back_populates="fixtures")
+    container     = relationship("Container",    back_populates="fixtures")
+    status        = relationship("Status")
+    files         = relationship("FixtureFile",  back_populates="fixture", cascade="all, delete-orphan")
+
+
+class ModelFile(Base):
+    __tablename__ = "model_files"
+    file_id       = Column(Integer, primary_key=True)
+    model_id      = Column(Integer, ForeignKey("models.model_id", ondelete="CASCADE"), nullable=False)
+    filename      = Column(String(255), nullable=False)   # stored name (UUID-based)
+    original_name = Column(String(255), nullable=False)   # original upload name
+    mime_type     = Column(String(64))
+    size_bytes    = Column(Integer)
+    uploaded_at   = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    note          = Column(Text)
+
+    model = relationship("FixtureModel", back_populates="files")
+
+
+class FixtureFile(Base):
+    __tablename__ = "fixture_files"
+    file_id       = Column(Integer, primary_key=True)
+    fixture_id    = Column(Integer, ForeignKey("fixtures.fixture_id", ondelete="CASCADE"), nullable=False)
+    filename      = Column(String(255), nullable=False)
+    original_name = Column(String(255), nullable=False)
+    mime_type     = Column(String(64))
+    size_bytes    = Column(Integer)
+    uploaded_at   = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    note          = Column(Text)
+
+    fixture = relationship("Fixture", back_populates="files")
 
 
 class Event(Base):
@@ -123,7 +168,6 @@ class LoadContainer(Base):
     id           = Column(Integer, primary_key=True)
     load_id      = Column(Integer, ForeignKey("loads.load_id", ondelete="CASCADE"), nullable=False)
     container_id = Column(Integer, ForeignKey("containers.container_id", ondelete="CASCADE"), nullable=False)
-
     load      = relationship("Load",      back_populates="containers")
     container = relationship("Container")
 
@@ -134,7 +178,6 @@ class LoadFixture(Base):
     load_id    = Column(Integer, ForeignKey("loads.load_id",       ondelete="CASCADE"), nullable=False)
     fixture_id = Column(Integer, ForeignKey("fixtures.fixture_id", ondelete="CASCADE"), nullable=False)
     included   = Column(Boolean, nullable=False, default=True)
-
     load    = relationship("Load",    back_populates="fixtures")
     fixture = relationship("Fixture")
 
@@ -146,7 +189,6 @@ class LoadLog(Base):
     timestamp = Column(TIMESTAMP(timezone=True), server_default=func.now())
     action    = Column(String(64), nullable=False)
     note      = Column(Text)
-
     load = relationship("Load", back_populates="log_entries")
 
 
@@ -160,6 +202,5 @@ class StatusChangeLog(Base):
     load_id       = Column(Integer, ForeignKey("loads.load_id", ondelete="SET NULL"))
     timestamp     = Column(TIMESTAMP(timezone=True), server_default=func.now())
     note          = Column(Text)
-
     old_status = relationship("Status", foreign_keys=[old_status_id])
     new_status = relationship("Status", foreign_keys=[new_status_id])

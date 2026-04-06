@@ -29,11 +29,8 @@ def delete_status(status_id: int, db: Session = Depends(get_db)):
     if not obj:
         raise HTTPException(404, "Status not found")
     # Prevent deleting statuses in use
-    in_use = (
-        db.query(models.Fixture).filter(models.Fixture.status_id == status_id).count() +
-        db.query(models.Container).filter(models.Container.status_id == status_id).count()
-    )
+    in_use = db.query(models.Fixture).filter(models.Fixture.status_id == status_id).count()
     if in_use:
-        raise HTTPException(409, f"Status is assigned to {in_use} item(s) — reassign them first")
+        raise HTTPException(409, f"Status is assigned to {in_use} fixture(s) — reassign them first")
     db.delete(obj)
     db.commit()

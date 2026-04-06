@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-from .routers import statuses, contacts, locations, containers, fixtures, loads, events
+from .routers import statuses, contacts, locations, containers, fixtures, loads, events, fixture_models
 from .scheduler import start_scheduler
 
 
@@ -42,6 +42,7 @@ app.include_router(containers.router)
 app.include_router(fixtures.router)
 app.include_router(loads.router)
 app.include_router(events.router)
+app.include_router(fixture_models.router)
 
 
 @app.get("/", tags=["Health"])
@@ -51,6 +52,34 @@ def root():
         "ui": "http://localhost:8000/app",
         "docs": "http://localhost:8000/docs"
     }
+
+@app.get("/debug/fixtures", tags=["Debug"])
+def debug_fixtures(db = __import__("fastapi", fromlist=["Depends"]).Depends(__import__("backend.database", fromlist=["get_db"]).get_db)):
+    pass
+
+@app.get("/debug/test", tags=["Debug"])
+def debug_test():
+    try:
+        from .database import SessionLocal
+        from . import models as m
+        from sqlalchemy.orm import joinedload
+        db = SessionLocal()
+        try:
+            # Step 1: basic query
+            fx_count = db.query(m.Fixture).count()
+            # Step 2: access short_name on first fixture
+            fx = db.query(m.Fixture).first()
+            sn = fx.short_name if fx else "no fixtures"
+            # Step 3: joinedload
+            fx2 = db.query(m.Fixture).options(joinedload(m.Fixture.fixture_model)).first()
+            model_name = fx2.fixture_model.model_name if fx2 and fx2.fixture_model else "no model"
+            return {"count": fx_count, "first_short_name": sn, "first_model_name": model_name}
+        except Exception as e:
+            return {"error": str(e), "type": type(e).__name__}
+        finally:
+            db.close()
+    except Exception as e:
+        return {"import_error": str(e)}
 
 
 _frontend = os.path.join(os.path.dirname(__file__), "..", "frontend")

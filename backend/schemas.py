@@ -8,8 +8,7 @@ class StatusBase(BaseModel):
     name: str
     description: Optional[str] = None
 
-class StatusCreate(StatusBase):
-    pass
+class StatusCreate(StatusBase): pass
 
 class StatusOut(StatusBase):
     status_id: int
@@ -26,8 +25,7 @@ class ContactBase(BaseModel):
     email:      Optional[str] = None
     note:       Optional[str] = None
 
-class ContactCreate(ContactBase):
-    pass
+class ContactCreate(ContactBase): pass
 
 class ContactOut(ContactBase):
     contact_id: int
@@ -44,8 +42,7 @@ class LocationBase(BaseModel):
     contact_id: Optional[int] = None
     note:       Optional[str] = None
 
-class LocationCreate(LocationBase):
-    pass
+class LocationCreate(LocationBase): pass
 
 class LocationOut(LocationBase):
     location_id:              int
@@ -53,7 +50,7 @@ class LocationOut(LocationBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ── Containers (no status_id) ────────────────────────────────
+# ── Containers ───────────────────────────────────────────────
 class ContainerBase(BaseModel):
     category:       Optional[str]   = None
     container_type: Optional[str]   = None
@@ -65,8 +62,7 @@ class ContainerBase(BaseModel):
     height_cm:      Optional[float] = None
     note:           Optional[str]   = None
 
-class ContainerCreate(ContainerBase):
-    pass
+class ContainerCreate(ContainerBase): pass
 
 class ContainerOut(ContainerBase):
     container_id: int
@@ -76,25 +72,65 @@ class ContainerWithFixtures(ContainerOut):
     fixtures: List["FixtureOut"] = []
 
 
-# ── Fixtures (no quantity — each row = 1 unit) ───────────────
-class FixtureBase(BaseModel):
+# ── Fixture Models ───────────────────────────────────────────
+class FixtureModelBase(BaseModel):
+    model_name:   str
     category:     Optional[str]   = None
     subcategory:  Optional[str]   = None
+    manufacturer: Optional[str]   = None
+    model:        Optional[str]   = None
+    weight_kg:    Optional[float] = None
+    width_cm:     Optional[float] = None
+    depth_cm:     Optional[float] = None
+    height_cm:    Optional[float] = None
+    power_w:      Optional[float] = None
+    description:  Optional[str]   = None
+    preview_image:Optional[str]   = None
+
+class FixtureModelCreate(FixtureModelBase): pass
+
+class FixtureModelOut(FixtureModelBase):
+    model_id:   int
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Fixtures ─────────────────────────────────────────────────
+class FixtureBase(BaseModel):
     short_name:   str
+    model_id:     Optional[int] = None
+    container_id: Optional[int] = None
+    status_id:    Optional[int] = None
+    note:         Optional[str] = None
+
+class FixtureCreate(FixtureBase):
+    quantity: int = 1  # convenience: creates N rows
+
+class FixtureOut(FixtureBase):
+    fixture_id: int
+    # Flattened model fields for convenience (populated via joined query)
+    model_name:   Optional[str]   = None
+    category:     Optional[str]   = None
+    subcategory:  Optional[str]   = None
     manufacturer: Optional[str]   = None
     model:        Optional[str]   = None
     weight_kg:    Optional[float] = None
     power_w:      Optional[float] = None
-    container_id: Optional[int]   = None
-    status_id:    Optional[int]   = None
-    note:         Optional[str]   = None
+    model_config  = ConfigDict(from_attributes=True)
 
-class FixtureCreate(FixtureBase):
-    # quantity field accepted in API for convenience — creates N rows
-    quantity: int = 1
+class FixtureWithModel(FixtureOut):
+    fixture_model: Optional[FixtureModelOut] = None
 
-class FixtureOut(FixtureBase):
-    fixture_id: int
+
+# ── File attachments ─────────────────────────────────────────
+class FileOut(BaseModel):
+    file_id:       int
+    filename:      str
+    original_name: str
+    mime_type:     Optional[str] = None
+    size_bytes:    Optional[int] = None
+    uploaded_at:   datetime
+    note:          Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -104,46 +140,45 @@ class LoadCreate(BaseModel):
     destination_location_id: int
     event_id:                Optional[int] = None
     container_ids:           List[int]
-    # fixture IDs to exclude (moved to placeholder)
     deselected_fixture_ids:  List[int] = []
     note:                    Optional[str] = None
 
 class LoadOut(BaseModel):
     load_id:                 int
     created_at:              datetime
-    origin_location_id:      Optional[int]
-    destination_location_id: Optional[int]
+    origin_location_id:      Optional[int] = None
+    destination_location_id: Optional[int] = None
     event_id:                Optional[int] = None
     status:                  str
-    note:                    Optional[str]
+    note:                    Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
 # ── Load Manifest ────────────────────────────────────────────
 class ManifestFixture(BaseModel):
-    fixture_id:   int
-    short_name:   str
-    weight_kg:    Optional[float]
-    included:     bool
+    fixture_id:  int
+    model_name:  str
+    weight_kg:   Optional[float] = None
+    included:    bool
 
 class ManifestContainer(BaseModel):
     container_id: int
     short_name:   str
-    tare_kg:      Optional[float]
-    volume_m3:    Optional[float]
+    tare_kg:      Optional[float] = None
+    volume_m3:    Optional[float] = None
     fixtures:     List[ManifestFixture]
 
 class LoadManifest(BaseModel):
-    load_id:          int
-    created_at:       datetime
-    origin:           str
-    destination:      str
-    containers:       List[ManifestContainer]
-    total_weight_kg:  float
-    total_volume_m3:  float
+    load_id:         int
+    created_at:      datetime
+    origin:          str
+    destination:     str
+    containers:      List[ManifestContainer]
+    total_weight_kg: float
+    total_volume_m3: float
 
 
-# ── Status change (manual) ───────────────────────────────────
+# ── Status change ────────────────────────────────────────────
 class StatusChangeRequest(BaseModel):
     entity_type:   str
     entity_id:     int

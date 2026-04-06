@@ -1,9 +1,30 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import text
 from .. import models, schemas
 from ..database import get_db
 
 router = APIRouter(prefix="/containers", tags=["Containers"])
+
+
+def _next_container_id(is_placeholder: bool, db: Session) -> int:
+    """
+    Return the lowest available container_id:
+      - placeholder  → lowest positive integer not in use (starts at 1)
+      - all others   → lowest integer >= 10001 not in use
+    """
+    start = 1 if is_placeholder else 10001
+    # Find all existing IDs in the relevant range efficiently
+    existing = set(
+        row[0] for row in db.execute(
+            text("SELECT container_id FROM containers WHERE container_id >= :s"),
+            {"s": start}
+        )
+    )
+    candidate = start
+    while candidate in existing:
+        candidate += 1
+    return candidate
 
 
 @router.get("/", response_model=list[schemas.ContainerOut])
@@ -29,7 +50,9 @@ def get_container(container_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.ContainerOut, status_code=201)
 def create_container(payload: schemas.ContainerCreate, db: Session = Depends(get_db)):
-    obj = models.Container(**payload.model_dump())
+    is_placeholder = (payload.container_type or "").lower() == "placeholder"
+    new_id = _next_container_id(is_placeholder, db)
+    obj = models.Container(container_id=new_id, **payload.model_dump())
     db.add(obj)
     db.commit()
     db.refresh(obj)
@@ -57,3 +80,18 @@ def delete_container(container_id: int, db: Session = Depends(get_db)):
         raise HTTPException(409, "Cannot delete a placeholder container directly")
     db.delete(obj)
     db.commit()
+
+
+@router.put("/upsert/{container_id}", response_model=schemas.ContainerOut)
+def upsert_container(container_id: int, payload: schemas.ContainerCreate, db: Session = Depends(get_db)):
+    obj = db.get(models.Container, container_id)
+    data = payload.model_dump()
+    if obj:
+        for k, v in data.items():
+            setattr(obj, k, v)
+    else:
+        obj = models.Container(container_id=container_id, **data)
+        db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj

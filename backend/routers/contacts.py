@@ -47,3 +47,16 @@ def delete_contact(contact_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Contact not found")
     db.delete(obj)
     db.commit()
+
+@router.put("/upsert/{contact_id}", response_model=schemas.ContactOut)
+def upsert_contact(contact_id: int, payload: schemas.ContactCreate, db: Session = Depends(get_db)):
+    obj = db.get(models.Contact, contact_id)
+    data = payload.model_dump()
+    if obj:
+        for k, v in data.items():
+            setattr(obj, k, v)
+    else:
+        obj = models.Contact(contact_id=contact_id, **data)
+        db.add(obj)
+    db.commit(); db.refresh(obj)
+    return obj

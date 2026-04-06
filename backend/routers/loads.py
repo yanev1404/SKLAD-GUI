@@ -39,7 +39,16 @@ def get_load(load_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{load_id}/manifest", response_model=schemas.LoadManifest)
 def get_manifest(load_id: int, db: Session = Depends(get_db)):
-    load = db.get(models.Load, load_id)
+    from sqlalchemy.orm import joinedload
+    load = (db.query(models.Load)
+        .options(
+            joinedload(models.Load.containers).joinedload(models.LoadContainer.container)
+                .joinedload(models.Container.fixtures)
+                .joinedload(models.Fixture.fixture_model)
+        )
+        .filter(models.Load.load_id == load_id)
+        .first()
+    )
     if not load:
         raise HTTPException(404, "Load not found")
 
@@ -61,12 +70,14 @@ def get_manifest(load_id: int, db: Session = Depends(get_db)):
         fx_weight    = 0.0
         for f in c.fixtures:
             included = lf_map.get(f.fixture_id, True)
+            m = f.fixture_model  # joined via relationship
+            m_weight = float(m.weight_kg) if m and m.weight_kg else 0.0
             if included:
-                fx_weight += float(f.weight_kg or 0)
+                fx_weight += m_weight
             fixtures_out.append(schemas.ManifestFixture(
                 fixture_id=f.fixture_id,
-                short_name=f.short_name,
-                weight_kg=float(f.weight_kg) if f.weight_kg else None,
+                model_name=m.model_name if m else (f.short_name if hasattr(f, 'short_name') else '—'),
+                weight_kg=m_weight or None,
                 included=included
             ))
 
@@ -160,7 +171,16 @@ def create_load(payload: schemas.LoadCreate, db: Session = Depends(get_db)):
 
 @router.post("/{load_id}/storno", response_model=schemas.LoadOut)
 def storno_load(load_id: int, db: Session = Depends(get_db)):
-    load = db.get(models.Load, load_id)
+    from sqlalchemy.orm import joinedload
+    load = (db.query(models.Load)
+        .options(
+            joinedload(models.Load.containers).joinedload(models.LoadContainer.container)
+                .joinedload(models.Container.fixtures)
+                .joinedload(models.Fixture.fixture_model)
+        )
+        .filter(models.Load.load_id == load_id)
+        .first()
+    )
     if not load:
         raise HTTPException(404, "Load not found")
     if load.status == "storno":
